@@ -22,10 +22,12 @@ class SBuild(implicit project: Project) {
   val scalaVersion = "2.9.2"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
-    
+
+  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/20/de.tototec.sbuild-0.1.4.jar"
+
   val compileCp =
     ("mvn:org.scala-lang:scala-library:" + scalaVersion) ~
-      ("../de.tototec.sbuild/target/de.tototec.sbuild.jar") ~
+      sbuildCoreJar ~
       "mvn:org.osgi:org.osgi.core:4.2.0" ~
       "mvn:org.eclipse.core:runtime:3.3.100-v20070530" ~
       "mvn:org.eclipse.core:resources:3.3.0-v20070604" ~
