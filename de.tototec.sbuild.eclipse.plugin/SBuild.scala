@@ -19,6 +19,9 @@ class SBuild(implicit project: Project) {
   val sbuildVersion = Prop("SBUILD_VERSION", version)
   val eclipseJar = "target/de.tototec.sbuild.eclipse.plugin-" + version + ".jar"
 
+  val featureXml = "target/feature/feature.xml"
+  val featureJar = "target/de.tototec.sbuild.eclipse.plugin.feature_" + version + ".jar"
+
   val scalaVersion = "2.9.2"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
@@ -128,6 +131,109 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
       files = ctx.fileDependencies.filter(_.getName.endsWith(".bnd")).mkString(","),
       output = ctx.targetFile.get
     )
+  }
+
+  Target(featureXml) dependsOn eclipseJar exec { ctx: TargetContext =>
+
+    val pluginSize = Path(eclipseJar).length
+
+    val featureXml = 
+"""<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   Licensed to the Apache Software Foundation (ASF) under one
+   or more contributor license agreements.  See the NOTICE file
+   distributed with this work for additional information
+   regarding copyright ownership.  The ASF licenses this file
+   to you under the Apache License, Version 2.0 (the
+   "License"); you may not use this file except in compliance
+   with the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.    
+-->
+<feature
+      id="de.tototec.sbuild.eclipse.plugin.feature"
+      label="SBuild Eclipse Plugin Feature"
+      version="""" + version + """"
+      provider-name="ToToTec GbR"
+      plugin="de.tototec.sbuild.eclipse.plugin">
+
+   <description url="http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin">
+      Eclipse Integration for SBuild Buildsystem.
+   </description>
+
+   <copyright>
+      Copyright © 2012 ToToTec GbR, Tobias Roeser
+   </copyright>
+
+   <license url="http://www.apache.org/licenses/LICENSE-2.0">
+<![CDATA[""" + io.Source.fromFile(Path("LICENSE.txt")).getLines.mkString("\n") + """]]>
+   </license>
+
+   <url>
+      <update label="SBuild Eclipse Plugin Update-Site" url="http://sbuild.tototec.de/svn/sbuild/release/"/>
+      <discovery label="SBuild Eclipse Plugin Update-Site" url="http://www.apache.org/dist/ant/ivyde/updatesite"/>
+   </url>
+
+   <requires>
+      <import plugin="org.eclipse.core.runtime" version="3.4.0" match="compatible"/>
+      <import plugin="org.eclipse.jdt.core" version="3.4.0" match="compatible"/>
+      <import plugin="org.eclipse.jdt.ui" version="3.4.0" match="compatible"/>
+      <import plugin="org.eclipse.equinox.preferences" version="3.2.100" match="compatible"/>
+      <import plugin="org.eclipse.core.resources" version="3.3.0" match="compatible"/>
+      <import plugin="org.eclipse.jface" version="3.4.0" match="compatible"/>
+      <import plugin="org.scala-ide.scala.library" version="2.9.2" match="compatible"/>
+   </requires>
+
+   <plugin
+         id="de.tototec.sbuild.eclipse.plugin"
+         download-size="""" + pluginSize + """"
+         install-size="""" + pluginSize + """"
+         version="""" + version + """"/>
+
+</feature>
+"""
+
+    AntEcho(message = featureXml, file = ctx.targetFile.get)
+  }
+
+  Target(featureJar) dependsOn featureXml exec { ctx: TargetContext =>
+    AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/feature"))
+  }
+
+  Target("phony:update-site") dependsOn featureJar ~ eclipseJar exec {
+    AntDelete(dir = Path("target/update-site"))
+    AntMkdir(dir = Path("target/update-site/features"))
+    AntMkdir(dir = Path("target/update-site/plugins"))
+    AntCopy(file = Path(featureJar), toDir = Path("target/update-site/features"))
+    AntCopy(file = Path(eclipseJar), toFile = Path("target/update-site/plugins/de.tototec.sbuild.eclipse.plugin_" + version + ".jar")) 
+
+    val siteXml = 
+"""<site>
+  <description>Update-Site for SBuild Eclipse Plugin.</description>
+
+  <feature
+    url="features/de.tototec.sbuild.eclipse.plugin.feature_""" + version + """.jar"
+    patch="false"
+    id="de.tototec.sbuild.eclipse.plugin.feature"
+    version="""" + version + """">
+
+    <category name="SBuild Eclipse Plugin"/>
+  </feature>
+
+  <category-def label="SBuild Eclipse Plugin" name="SBuild Eclipse Plugin">
+    <description>SBuild Eclipse Plugin</description>
+  </category-def>
+
+</site>"""
+
+    AntEcho(message = siteXml, file = Path("target/update-site/site.xml"))
   }
 
 }
