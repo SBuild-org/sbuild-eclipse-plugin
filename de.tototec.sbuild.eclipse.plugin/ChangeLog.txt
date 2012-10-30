@@ -1,4 +1,4 @@
-SBuild Eclipse Plugin 0.2.0/trunk
+SBuild Eclipse Plugin 0.2.0 - 2012-10-30
 
 * First separate release of SBuild Eclipse Plugin, with independent version,
   compatible to SBuild 0.1.4 and above.

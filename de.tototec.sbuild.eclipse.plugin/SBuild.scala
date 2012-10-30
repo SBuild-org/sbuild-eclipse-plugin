@@ -15,12 +15,15 @@ class SBuild(implicit project: Project) {
   SchemeHandler("mvn", new MvnSchemeHandler())
   SchemeHandler("zip", new ZipSchemeHandler())
 
-  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.1.4.9000")
+  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0")
   val sbuildVersion = Prop("SBUILD_VERSION", version)
   val eclipseJar = "target/de.tototec.sbuild.eclipse.plugin-" + version + ".jar"
 
   val featureXml = "target/feature/feature.xml"
+  val featureProperties = "target/feature/feature.properties"
   val featureJar = "target/de.tototec.sbuild.eclipse.plugin.feature_" + version + ".jar"
+
+  val updateSiteZip = "target/sbuild-eclipse-plugin-update-site-" + version + ".zip"
 
   val scalaVersion = "2.9.2"
 
@@ -50,7 +53,7 @@ class SBuild(implicit project: Project) {
 
   ExportDependencies("eclipse.classpath", compileCp)
 
-  Target("phony:all") dependsOn "clean" ~ eclipseJar
+  Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip
 
   Target("phony:clean") exec {
     AntDelete(dir = Path("target"))
@@ -133,9 +136,17 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
     )
   }
 
+  Target(featureProperties) exec { ctx: TargetContext =>
+    val props = new java.util.Properties()
+    props.put("description", "Eclipse Integration for SBuild Buildsystem.")
+    props.put("license", io.Source.fromFile(Path("LICENSE.txt")).getLines.mkString("\n"))
+    props.store(new java.io.FileWriter(ctx.targetFile.get), null)
+  }
+
   Target(featureXml) dependsOn eclipseJar exec { ctx: TargetContext =>
 
     val pluginSize = Path(eclipseJar).length
+    val updateSiteUrl = "http://sbuild.tototec.de/svn/sbuild/releases/sbuild-eclipse-plugin-" + version + "/update-site"
 
     val featureXml = 
 """<?xml version="1.0" encoding="UTF-8"?>
@@ -164,21 +175,15 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
       provider-name="ToToTec GbR"
       plugin="de.tototec.sbuild.eclipse.plugin">
 
-   <description url="http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin">
-      Eclipse Integration for SBuild Buildsystem.
-   </description>
+   <description url="http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin">%description</description>
 
-   <copyright>
-      Copyright © 2012 ToToTec GbR, Tobias Roeser
-   </copyright>
+   <copyright>Copyright © 2012 ToToTec GbR, Tobias Roeser</copyright>
 
-   <license url="http://www.apache.org/licenses/LICENSE-2.0">
-<![CDATA[""" + io.Source.fromFile(Path("LICENSE.txt")).getLines.mkString("\n") + """]]>
-   </license>
+   <license url="http://www.apache.org/licenses/LICENSE-2.0">%license</license>
 
    <url>
-      <update label="SBuild Eclipse Plugin Update-Site" url="http://sbuild.tototec.de/svn/sbuild/release/"/>
-      <discovery label="SBuild Eclipse Plugin Update-Site" url="http://www.apache.org/dist/ant/ivyde/updatesite"/>
+      <update label="SBuild Eclipse Plugin Update-Site" url="""" + updateSiteUrl + """"/>
+      <discovery label="SBuild Eclipse Plugin Update-Site" url="""" + updateSiteUrl + """"/>
    </url>
 
    <requires>
@@ -203,7 +208,7 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
     AntEcho(message = featureXml, file = ctx.targetFile.get)
   }
 
-  Target(featureJar) dependsOn featureXml exec { ctx: TargetContext =>
+  Target(featureJar) dependsOn featureXml ~ featureProperties exec { ctx: TargetContext =>
     AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/feature"))
   }
 
@@ -234,6 +239,10 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
 </site>"""
 
     AntEcho(message = siteXml, file = Path("target/update-site/site.xml"))
+  }
+
+  Target(updateSiteZip) dependsOn "update-site" exec { ctx: TargetContext =>
+    AntZip(destFile = ctx.targetFile.get, baseDir = Path("target"), includes = "update-site/**")
   }
 
 }
