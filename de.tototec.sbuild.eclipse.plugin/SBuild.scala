@@ -15,7 +15,7 @@ class SBuild(implicit project: Project) {
   SchemeHandler("mvn", new MvnSchemeHandler())
   SchemeHandler("zip", new ZipSchemeHandler())
 
-  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0")
+  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0.9000")
   val sbuildVersion = Prop("SBUILD_VERSION", version)
   val eclipseJar = "target/de.tototec.sbuild.eclipse.plugin-" + version + ".jar"
 
@@ -51,7 +51,9 @@ class SBuild(implicit project: Project) {
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
       "http://cmdoption.tototec.de/cmdoption/attachments/download/3/de.tototec.cmdoption-0.1.0.jar"
 
-  ExportDependencies("eclipse.classpath", compileCp)
+  val testCp = compileCp ~ "mvn:org.scalatest:scalatest_2.9.0:1.8"
+
+  ExportDependencies("eclipse.classpath", testCp)
 
   Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip
 
@@ -62,8 +64,8 @@ class SBuild(implicit project: Project) {
   Target("phony:compile") dependsOn (compileCp) exec { ctx: TargetContext =>
     val input = "src/main/scala"
     val output = "target/classes"
-    AntMkdir(dir = Path(output))
     IfNotUpToDate(srcDir = Path(input), stateDir = Path("target"), ctx = ctx) {
+      AntMkdir(dir = Path(output))
       scala_tools_ant.AntScalac(
         target = "jvm-1.5",
         encoding = "UTF-8",
@@ -148,8 +150,7 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
     val pluginSize = Path(eclipseJar).length
     val updateSiteUrl = "http://sbuild.tototec.de/svn/sbuild/releases/sbuild-eclipse-plugin-" + version + "/update-site"
 
-    val featureXml = 
-"""<?xml version="1.0" encoding="UTF-8"?>
+    val featureXml = """<?xml version="1.0" encoding="UTF-8"?>
 <!--
    Licensed to the Apache Software Foundation (ASF) under one
    or more contributor license agreements.  See the NOTICE file
@@ -217,10 +218,10 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
     AntMkdir(dir = Path("target/update-site/features"))
     AntMkdir(dir = Path("target/update-site/plugins"))
     AntCopy(file = Path(featureJar), toDir = Path("target/update-site/features"))
-    AntCopy(file = Path(eclipseJar), toFile = Path("target/update-site/plugins/de.tototec.sbuild.eclipse.plugin_" + version + ".jar")) 
+    AntCopy(file = Path(eclipseJar), toFile = Path("target/update-site/plugins/de.tototec.sbuild.eclipse.plugin_" + version + ".jar"))
 
-    val siteXml = 
-"""<site>
+    val siteXml = """<?xml version="1.0" encoding="UTF-8"?>
+<site>
   <description>Update-Site for SBuild Eclipse Plugin.</description>
 
   <feature
@@ -243,6 +244,31 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
 
   Target(updateSiteZip) dependsOn "update-site" exec { ctx: TargetContext =>
     AntZip(destFile = ctx.targetFile.get, baseDir = Path("target"), includes = "update-site/**")
+  }
+
+  Target("phony:compileTest") dependsOn eclipseJar ~ testCp exec { ctx: TargetContext =>
+    IfNotUpToDate(Path("src/test/scala"), Path("target"), ctx) {
+      AntMkdir(dir = Path("target/test-classes"))
+      scala_tools_ant.AntScalac(
+        target = "jvm-1.5",
+        encoding = "UTF-8",
+        deprecation = "on",
+        unchecked = "on",
+        debugInfo = "vars",
+        force = true,
+        srcDir = AntPath("src/test/scala"),
+        destDir = Path("target/test-classes"),
+        classpath = AntPath(locations = ctx.fileDependencies)
+      )
+    }
+  }
+
+  Target("phony:test") dependsOn eclipseJar ~ testCp ~ "compileTest" exec { ctx: TargetContext =>
+    de.tototec.sbuild.addons.scalatest.ScalaTest(
+      classpath = ctx.fileDependencies,
+      runPath = Seq("target/test-classes"),
+      reporter = "oF"
+    )
   }
 
 }
