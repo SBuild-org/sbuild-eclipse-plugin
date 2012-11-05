@@ -15,7 +15,7 @@ class SBuild(implicit project: Project) {
   SchemeHandler("mvn", new MvnSchemeHandler())
   SchemeHandler("zip", new ZipSchemeHandler())
 
-  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0.9000")
+  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date()))
   val sbuildVersion = Prop("SBUILD_VERSION", version)
   val eclipseJar = "target/de.tototec.sbuild.eclipse.plugin-" + version + ".jar"
 
