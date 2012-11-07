@@ -14,10 +14,30 @@ import org.eclipse.jdt.core.IClasspathContainer
 import org.eclipse.jdt.core.IClasspathEntry
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.core.runtime.NullProgressMonitor
+import org.eclipse.jdt.core.JavaModelException
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
   def SBuildHomeVariableName = "SBUILD_HOME"
+
+  def getSBuildClasspathContainers(javaProjects: Array[IJavaProject]): Array[SBuildClasspathContainer] =
+    javaProjects.flatMap { p => getSBuildClasspathContainers(p) }
+
+  def getSBuildClasspathContainers(javaProject: IJavaProject): Array[SBuildClasspathContainer] = {
+    if (javaProject == null || !javaProject.exists()) {
+      Array()
+    } else try {
+      val sbuildContainerEntries = javaProject.getRawClasspath.filter { entry =>
+        entry != null && entry.getEntryKind == IClasspathEntry.CPE_CONTAINER && entry.getPath.segment(0) == ContainerName
+      }
+      val sbuildContainers = sbuildContainerEntries.map { entry => JavaCore.getClasspathContainer(entry.getPath, javaProject) }
+      sbuildContainers.partition(_.isInstanceOf[SBuildClasspathContainer])._1.map { _.asInstanceOf[SBuildClasspathContainer] }
+    } catch {
+      case e: Exception =>
+        debug("Caught exception while retrieving SBuild containers.", e)
+        Array()
+    }
+  }
 }
 
 /**
@@ -27,7 +47,7 @@ object SBuildClasspathContainer {
  * TODO: resolve the classpath in background
  *
  */
-class SBuildClasspathContainer(path: IPath, protected val project: IJavaProject) extends IClasspathContainer {
+class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends IClasspathContainer {
 
   override val getKind = IClasspathContainer.K_APPLICATION
   override val getDescription = "SBuild Libraries"
@@ -43,11 +63,15 @@ class SBuildClasspathContainer(path: IPath, protected val project: IJavaProject)
 
   protected var classpathEntries: Option[Array[IClasspathEntry]] = None
 
+  protected var relatedWorkspaceProjectNames: Set[String] = Set()
+  def dependsOnWorkspaceProjects(projectNames: Array[String]) = relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
+
   def this(predecessor: SBuildClasspathContainer) {
     this(predecessor.getPath, predecessor.project)
     this.sbuildFileTimestamp = predecessor.sbuildFileTimestamp
     this.resolveActions = predecessor.resolveActions
     this.classpathEntries = predecessor.classpathEntries
+    this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
   }
 
   /**
@@ -98,7 +122,10 @@ class SBuildClasspathContainer(path: IPath, protected val project: IJavaProject)
     }
   }
 
-  def calcClasspath: Seq[IClasspathEntry] = {
+  /**
+   * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
+   */
+  def calcClasspath: (Seq[IClasspathEntry], Set[String]) = {
     // TODO: do the heavy work in background (or Job)
 
     // read the project
@@ -129,29 +156,35 @@ class SBuildClasspathContainer(path: IPath, protected val project: IJavaProject)
 
     val aliases = WorkspaceProjectAliases(project)
     debug("Using workspaceProjectAliases: " + aliases)
+
+    var relatedWorkspaceProjectNames: Set[String] = Set()
+
     val classpathEntries = resolveActions.get.map { action: ResolveAction =>
       aliases.getAliasForDependency(action.name) match {
         case None => resolveViaSBuild(action)
-        case Some(alias) => javaModel.getJavaProject(alias) match {
-          case javaProject if javaProject.exists && javaProject.isOpen =>
-            debug("Using Workspace Project as alias for project: " + action.name)
-            debug("About to add project entry: " + javaProject.getPath)
-            JavaCore.newProjectEntry(javaProject.getPath)
-          case _ => resolveViaSBuild(action)
-        }
+        case Some(alias) =>
+          relatedWorkspaceProjectNames += alias
+          javaModel.getJavaProject(alias) match {
+            case javaProject if javaProject.exists && javaProject.isOpen =>
+              debug("Using Workspace Project as alias for project: " + action.name)
+              debug("About to add project entry: " + javaProject.getPath)
+              JavaCore.newProjectEntry(javaProject.getPath)
+            case _ => resolveViaSBuild(action)
+          }
       }
     }
 
-    classpathEntries
+    (classpathEntries.distinct, relatedWorkspaceProjectNames)
   }
 
   override def getClasspathEntries: Array[IClasspathEntry] = try {
-    val newClasspathEntries = calcClasspath
+    val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
 
     val firstRun = this.classpathEntries.isEmpty
     val classpathEntriesChanged = !firstRun // || this.classpathEntries.get.toSet != newClasspathEntries.toSet
 
     this.classpathEntries = Some(newClasspathEntries.toArray)
+    this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
 
     if (classpathEntriesChanged) {
       debug("Classpath changed for " + project + ". Notify in background.")
