@@ -51,9 +51,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
       val projectNames = projects.map { _.getName }
 
-      info("Opened projects: " + projects.map(_.getName).mkString(", "))
-      projects.foreach { p => info("Project " + p.getName + " is open: " + p.isOpen) }
-      // TODO: find affected projects and refresh classpath
+      info("Changed projects: " + projects.map(p => p.getName + (if(p.isOpen) " opened" else " closed")).mkString(", "))
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
@@ -62,7 +60,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
         if (c.dependsOnWorkspaceProjects(projectNames)) {
         	info("Trigger update SBuild Libraries of project: " + c.project.getProject.getName)
         	// trigger a recalculation
-        	c.getClasspathEntries
+        	c.updateClasspathEntries
         }
       }
 

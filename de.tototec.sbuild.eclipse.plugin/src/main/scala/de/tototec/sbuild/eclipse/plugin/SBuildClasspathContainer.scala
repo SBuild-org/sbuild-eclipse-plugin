@@ -165,9 +165,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         case Some(alias) =>
           relatedWorkspaceProjectNames += alias
           javaModel.getJavaProject(alias) match {
-            case javaProject if javaProject.exists && javaProject.isOpen =>
-              debug("Using Workspace Project as alias for project: " + action.name)
-              debug("About to add project entry: " + javaProject.getPath)
+            case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
+              debug("Using Workspace Project '"+javaProject.getProject.getName +"' as alias for project: " + action.name)
               JavaCore.newProjectEntry(javaProject.getPath)
             case _ => resolveViaSBuild(action)
           }
@@ -177,7 +176,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     (classpathEntries.distinct, relatedWorkspaceProjectNames)
   }
 
-  override def getClasspathEntries: Array[IClasspathEntry] = try {
+  def updateClasspathEntries: Unit = try {
     val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
 
     val firstRun = this.classpathEntries.isEmpty
@@ -199,6 +198,15 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     case e: Exception =>
       debug("Could not calculate classpath entries.", e)
       Array()
+  }
+
+  override def getClasspathEntries: Array[IClasspathEntry] = {
+    this.classpathEntries match {
+      case None =>
+        updateClasspathEntries
+        Array()
+      case Some(entries) => entries
+    }
   }
 
 }
