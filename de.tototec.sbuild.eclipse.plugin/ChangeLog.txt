@@ -1,3 +1,10 @@
+SBuild Eclipse Plugin 0.2.1 - 2012-11-07
+
+* The SBuild Libraries classpath will be automatically refreshed when
+  workspace projects will be opened or closed, resulting in proper workspace
+  resolution.
+* Added Scala Library to Eclipse Update Site
+
 SBuild Eclipse Plugin 0.2.0 - 2012-10-30
 
 * First separate release of SBuild Eclipse Plugin, with independent version,
