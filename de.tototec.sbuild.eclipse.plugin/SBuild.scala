@@ -3,13 +3,15 @@ import de.tototec.sbuild.TargetRefs._
 import de.tototec.sbuild.ant._
 import de.tototec.sbuild.ant.tasks._
 
-@version("0.1.4")
+@version("0.3.0")
+@include(
+  "FeatureBuilder.scala"
+)
 @classpath(
-  "http://repo1.maven.org/maven2/org/apache/ant/ant/1.8.3/ant-1.8.3.jar",
-  "http://repo1.maven.org/maven2/org/scala-lang/scala-compiler/2.9.2/scala-compiler-2.9.2.jar",
+  "http://repo1.maven.org/maven2/org/apache/ant/ant/1.8.4/ant-1.8.4.jar",
   "http://dl.dropbox.com/u/2590603/bnd/biz.aQute.bnd.jar"
 )
-class SBuild(implicit project: Project) {
+class SBuild(implicit _project: Project) {
 
   SchemeHandler("http", new HttpSchemeHandler())
   SchemeHandler("mvn", new MvnSchemeHandler())
@@ -18,30 +20,35 @@ class SBuild(implicit project: Project) {
   //  val version = Prop("SBUILD_ECLIPSE_VERSION", "0.2.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date()))
   val version = "0.2.1.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
  //  val version = "0.2.1.9000"
-  val eclipseJar = "target/de.tototec.sbuild.eclipse.plugin_" + version + ".jar"
+  val eclipseJar = s"target/de.tototec.sbuild.eclipse.plugin_${version}.jar"
 
   val featureXml = "target/feature/feature.xml"
   val featureProperties = "target/feature/feature.properties"
-  val featureJar = "target/de.tototec.sbuild.eclipse.plugin.feature_" + version + ".jar"
+  val featureJar = s"target/de.tototec.sbuild.eclipse.plugin.feature_${version}.jar"
 
   val scalaLibBundleId = "org.scala-ide.scala.library"
-  val scalaLibBundleVersion = "2.9.2.v20120330-163119-949a4804e4"
-  val scalaLibBundleName = scalaLibBundleId + "_" + scalaLibBundleVersion + ".jar"
-  val scalaLibBundle = "http://download.scala-ide.org/sdk/e37/scala29/stable/site/plugins/" + scalaLibBundleName
+  val scalaLibBundleVersion = "2.10.0.v20121205-112020-18481cef9b"
+  val scalaLibBundleName = s"${scalaLibBundleId}_${scalaLibBundleVersion}.jar"
+  val scalaLibBundle = s"http://download.scala-ide.org/nightly-update-juno-master-2.10.x/plugins/${scalaLibBundleName}"
 
   val scalaLibFeatureXml = "target/scala-feature/feature.xml"
-  val scalaLibFeatureJar = "target/de.tototec.sbuild.eclipse.plugin.scala-library.feature_" + scalaLibBundleVersion + ".jar"
+  val scalaLibFeatureJar = s"target/de.tototec.sbuild.eclipse.plugin.scala-library.feature_${scalaLibBundleVersion}.jar"
 
-  val updateSiteZip = "target/sbuild-eclipse-plugin-update-site-" + version + ".zip"
+  val updateSiteZip = s"target/sbuild-eclipse-plugin-update-site-${version}.zip"
 
-  val scalaVersion = "2.9.2"
+  val scalaVersion = "2.10.0"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
-  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/20/de.tototec.sbuild-0.1.4.jar"
+  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/45/de.tototec.sbuild-0.3.0.jar"
+
+  val compilerCp =
+    s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
+    s"mvn:org.scala-lang:scala-compiler:${scalaVersion}" ~
+    s"mvn:org.scala-lang:scala-reflect:${scalaVersion}"
 
   val compileCp =
-    ("mvn:org.scala-lang:scala-library:" + scalaVersion) ~
+    s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
       sbuildCoreJar ~
       // "mvn:org.osgi:org.osgi.core:4.2.0" ~
       "mvn:org.eclipse:osgi:3.3.0-v20070530" ~
@@ -51,7 +58,7 @@ class SBuild(implicit project: Project) {
       "mvn:org.eclipse.equinox:common:3.3.0-v20070426" ~
       "mvn:org.eclipse.core:contenttype:3.2.100-v20070319" ~
       "mvn:org.eclipse:jface:3.3.0-I20070606-0010" ~
-      ("zip:file=eclipse/plugins/org.eclipse.jface_3.4.0.I20080606-1300.jar;archive=" + eclipse34zip) ~
+      s"zip:file=eclipse/plugins/org.eclipse.jface_3.4.0.I20080606-1300.jar;archive=$eclipse34zip" ~
       "mvn:org.eclipse:swt:3.3.0-v3346" ~
       "mvn:org.eclipse.jdt:core:3.3.0-v_771" ~
       "mvn:org.eclipse.jdt:ui:3.3.0-v20070607-0010" ~
@@ -59,9 +66,13 @@ class SBuild(implicit project: Project) {
       "mvn:org.eclipse.equinox:registry:3.3.0-v20070522" ~
       "mvn:org.eclipse.equinox:preferences:3.2.100-v20070522" ~
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
-      "http://cmdoption.tototec.de/cmdoption/attachments/download/3/de.tototec.cmdoption-0.1.0.jar"
+      "http://cmdoption.tototec.de/cmdoption/attachments/download/6/de.tototec.cmdoption-0.2.0.jar"
 
-  val testCp = compileCp ~ "mvn:org.scalatest:scalatest_2.9.0:1.8"
+  val testCp =
+    compileCp ~
+    "mvn:org.scalatest:scalatest_2.10:1.9.1" ~
+    s"mvn:org.scala-lang:scala-actors:$scalaVersion"
+
 
   ExportDependencies("eclipse.classpath", testCp)
 
@@ -71,27 +82,27 @@ class SBuild(implicit project: Project) {
     AntDelete(dir = Path("target"))
   }
 
-  Target("phony:compile") dependsOn (compileCp) exec { ctx: TargetContext =>
+  Target("phony:compile") dependsOn compilerCp ~ compileCp exec { ctx: TargetContext =>
     val input = "src/main/scala"
     val output = "target/classes"
     IfNotUpToDate(srcDir = Path(input), stateDir = Path("target"), ctx = ctx) {
       AntMkdir(dir = Path(output))
-      scala_tools_ant.AntScalac(
+      addons.scala.Scalac(
         target = "jvm-1.5",
         encoding = "UTF-8",
-        deprecation = "on",
-        unchecked = "on",
+        deprecation = true,
+        unchecked = true,
         debugInfo = "vars",
-        // this is necessary, because the scala ant tasks outsmarts itself 
-        // when more than one scala class is defined in the same .scala file
-        force = true,
-        srcDir = AntPath(input),
+        fork = true,
+        srcDir = Path(input),
         destDir = Path(output),
-        classpath = AntPath(locations = ctx.fileDependencies))
+        compilerClasspath = ctx.fileDependencies,
+        classpath = ctx.fileDependencies
+      )
     }
   }
 
-  Target("target/bnd.bnd") dependsOn project.projectFile exec { ctx: TargetContext =>
+  Target("target/bnd.bnd") dependsOn _project.projectFile exec { ctx: TargetContext =>
     val bnd = """
 Bundle-SymbolicName: de.tototec.sbuild.eclipse.plugin;singleton:=true
 Bundle-Version: """ + version + """
@@ -117,7 +128,7 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
     AntEcho(message = bnd, file = ctx.targetFile.get)
   }
 
-  Target(eclipseJar) dependsOn (compileCp ~ "compile" ~ "target/bnd.bnd") exec { ctx: TargetContext =>
+  Target(eclipseJar) dependsOn compilerCp ~ compileCp ~ "compile" ~ "target/bnd.bnd" exec { ctx: TargetContext =>
     //     val jarTask = new AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/classes"))
     //     jarTask.addFileset(AntFileSet(dir = Path("."), includes = "LICENSE.txt"))
     //     jarTask.execute
@@ -147,9 +158,12 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
   }
 
   Target(featureProperties) exec { ctx: TargetContext =>
+    // Eclipse Update assume the first line as title, so remove trailing empty lines
+    val license = io.Source.fromFile(Path("LICENSE.txt")).getLines.dropWhile(l => l.trim.isEmpty)
+    
     val props = new java.util.Properties()
     props.put("description", "Eclipse Integration for SBuild Buildsystem.")
-    props.put("license", io.Source.fromFile(Path("LICENSE.txt")).getLines.mkString("\n"))
+    props.put("license", license.mkString("\n"))
     props.store(new java.io.FileWriter(ctx.targetFile.get), null)
   }
 
@@ -165,7 +179,7 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
       brandingPlugin = "de.tototec.sbuild.eclipse.plugin",
       license = "%license",
       licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0",
-      copyright = "Copyright © 2012 ToToTec GbR, Tobias Roeser",
+      copyright = "Copyright © 2012, 2013, ToToTec GbR, Tobias Roeser",
       description = "%description",
       descriptionUrl = "http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin",
       featureUrls = Seq(
@@ -254,7 +268,7 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 """,
       licenseUrl = "http://scala-lang.org/downloads/license.html",
-      copyright = "Copyright © 2012 ToToTec GbR, Tobias Roeser",
+      copyright = "Copyright © 2012, 2013, ToToTec GbR, Tobias Roeser",
       description = "Scala Library",
       descriptionUrl = "http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin",
       featureUrls = Seq(
@@ -319,19 +333,21 @@ SUCH DAMAGE.
     AntZip(destFile = ctx.targetFile.get, baseDir = Path("target"), includes = "update-site/**")
   }
 
-  Target("phony:compileTest") dependsOn eclipseJar ~ testCp exec { ctx: TargetContext =>
+  Target("phony:compileTest") dependsOn compilerCp ~ eclipseJar ~ testCp exec { ctx: TargetContext =>
     IfNotUpToDate(Path("src/test/scala"), Path("target"), ctx) {
       AntMkdir(dir = Path("target/test-classes"))
-      scala_tools_ant.AntScalac(
+      addons.scala.Scalac(
         target = "jvm-1.5",
         encoding = "UTF-8",
-        deprecation = "on",
-        unchecked = "on",
+        deprecation = true,
+        unchecked = true,
         debugInfo = "vars",
-        force = true,
-        srcDir = AntPath("src/test/scala"),
+        fork = true,
+        srcDir = Path("src/test/scala"),
         destDir = Path("target/test-classes"),
-        classpath = AntPath(locations = ctx.fileDependencies))
+        compilerClasspath = ctx.fileDependencies,
+        classpath = ctx.fileDependencies
+      )
     }
   }
 
@@ -340,108 +356,6 @@ SUCH DAMAGE.
       classpath = ctx.fileDependencies,
       runPath = Seq("target/test-classes"),
       reporter = "oF")
-  }
-
-}
-
-// TODO: Move this into separate file as soon a SBuild version with @include support is release and can be used.
-
-case class Requirement(plugin: String, version: String, versionMatch: String = "compatible")
-case class Plugin(id: String, version: String, file: java.io.File = null)
-case class FeatureUrl(kind: String, label: String, url: String)
-
-object FeatureBuilder {
-
-  def createFeatureXml(id: String,
-                       version: String,
-                       label: String,
-                       providerName: String,
-                       brandingPlugin: String = null,
-                       featureFileHeader: String = null,
-                       description: String = null,
-                       descriptionUrl: String = null,
-                       copyright: String = null,
-                       license: String = null,
-                       licenseUrl: String = null,
-                       plugins: Seq[Plugin] = Seq(),
-                       requirements: Seq[Requirement] = Seq(),
-                       featureUrls: Seq[FeatureUrl] = Seq()): String = {
-
-    val featureXml = new StringBuilder()
-    featureXml.append("""<?xml version="1.0" encoding="UTF-8"?>""").append("\n")
-
-    // Header
-    if (featureFileHeader != null) featureXml.append("<!--\n").append(featureFileHeader).append(" -->\n")
-
-    // Feature
-    featureXml.append("<feature")
-    featureXml.append("\n    id=\"").append(id).append("\"")
-    featureXml.append("\n    version=\"").append(version).append("\"")
-    featureXml.append("\n    label=\"").append(label).append("\"")
-    featureXml.append("\n    provider-name=\"").append(providerName).append("\"")
-    if (brandingPlugin != null) featureXml.append("\n    plugin=\"").append(brandingPlugin).append("\"")
-    featureXml.append(">\n\n")
-
-    // Description
-    if (description != null || descriptionUrl != null) {
-      featureXml.append("  <description")
-      if (descriptionUrl != null) featureXml.append(" url=\"").append(descriptionUrl).append("\">")
-      if (description != null) featureXml.append("<![CDATA[").append(description).append("]]>")
-      featureXml.append("</description>\n\n")
-    }
-
-    // Copyright
-    if (copyright != null) featureXml.append("  <copyright><![CDATA[").append(copyright).append("]]></copyright>\n\n")
-
-    // License
-    if (license != null || licenseUrl != null) {
-      featureXml.append("  <license")
-      if (licenseUrl != null) featureXml.append(" url=\"").append(licenseUrl).append("\"")
-      featureXml.append(">")
-      if (license != null) featureXml.append("<![CDATA[").append(license).append("]]>")
-      featureXml.append("</license>\n\n")
-    }
-
-    // URL
-    if (!featureUrls.isEmpty) {
-      featureXml.append("  <url>\n")
-      featureUrls.foreach { url =>
-        featureXml.append("    <").append(url.kind)
-        featureXml.append(" label=\"").append(url.label).append("\"")
-        featureXml.append(" url=\"").append(url.url).append("\"")
-        featureXml.append("/>\n")
-      }
-      featureXml.append("  </url>\n\n")
-    }
-
-    // Requires
-    if (!requirements.isEmpty) {
-      featureXml.append("  <requires>\n")
-      requirements.foreach { require =>
-        featureXml.append("    <import")
-        featureXml.append(" plugin=\"").append(require.plugin).append("\"")
-        featureXml.append(" version=\"").append(require.version).append("\"")
-        featureXml.append(" match=\"").append(require.versionMatch).append("\"")
-        featureXml.append("/>\n")
-      }
-      featureXml.append("  </requires>\n\n")
-    }
-
-    // Plugins
-    plugins.foreach { plugin =>
-      val size = if (plugin.file != null && plugin.file.exists) plugin.file.length else 0
-      featureXml.append("  <plugin\n")
-      featureXml.append("      id=\"").append(plugin.id).append("\"\n")
-      featureXml.append("      version=\"").append(plugin.version).append("\"\n")
-      featureXml.append("      download-size=\"").append(size).append("\"\n")
-      featureXml.append("      install-size=\"").append(size).append("\"")
-      featureXml.append("/>\n\n")
-    }
-
-    // End 
-    featureXml.append("\n</feature>\n")
-
-    featureXml.toString
   }
 
 }
