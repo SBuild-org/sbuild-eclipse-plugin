@@ -1,3 +1,10 @@
+SBuild Eclispe Plugin 0.3.0
+
+* Switched to Scala 2.10.
+* Supported SBuild version is now 0.3.0 or above because of Scala 2.10 binary
+  incompatibilities.
+* Made execution more robust.
+
 SBuild Eclipse Plugin 0.2.1 - 2012-11-07
 
 * The SBuild Libraries classpath will be automatically refreshed when

@@ -162,6 +162,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
 
     val classpathConfig = new ClasspathConfig
     classpathConfig.sbuildHomeDir = sbuildHomeDir
+    classpathConfig.noFsc = true
 
     debug("About to read project")
     val projectReader: ProjectReader = new SimpleProjectReader(config, classpathConfig)
