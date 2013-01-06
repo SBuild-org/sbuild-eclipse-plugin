@@ -89,16 +89,25 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     val buildFile = reader.buildFile
 
-    if (this.resolveActions.isDefined && buildFile.lastModified() == this.sbuildFileTimestamp) {
-      // already read the project
-      debug("Already read the project")
-      false
-    } else {
+    if (resolveActions.isEmpty) {
+      info("Reading project for the first time: " + project.getProject.getName)
+    } else if (buildFile.lastModified() != sbuildFileTimestamp) {
+      info("Build file has changed. Reading project again: " + project.getProject.getName)
+    }
 
-      this.resolveActions = Some(reader.readResolveActions)
-      this.sbuildFileTimestamp = buildFile.lastModified()
+    synchronized {
+      if (this.resolveActions.isDefined && buildFile.lastModified() == this.sbuildFileTimestamp) {
+        // already read the project
+        debug("Already read the project")
+        false
+      } else {
+        debug("Reading project and resolve action definitions")
 
-      true
+        this.resolveActions = Some(reader.readResolveActions)
+        this.sbuildFileTimestamp = buildFile.lastModified()
+
+        true
+      }
     }
   }
 
@@ -108,7 +117,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         val newContainer = new SBuildClasspathContainer(this)
         JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor())
       } catch {
-        case e => debug("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
+        case e => error("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
       }
     }
     inBackground match {
@@ -146,6 +155,9 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       } else {
         debug("About to resolve dependency: " + action.name)
         val success = action.action()
+        if (!success) {
+          error("Error in resolve of dependency \"" + action.name + "\" in project: " + project.getProject.getName)
+        }
         debug("Resolve successful: " + success)
       }
       debug("About to add classpath entry: " + action.result)
@@ -166,7 +178,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
           relatedWorkspaceProjectNames += alias
           javaModel.getJavaProject(alias) match {
             case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
-              debug("Using Workspace Project '"+javaProject.getProject.getName +"' as alias for project: " + action.name)
+              debug("Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + action.name)
               JavaCore.newProjectEntry(javaProject.getPath)
             case _ => resolveViaSBuild(action)
           }

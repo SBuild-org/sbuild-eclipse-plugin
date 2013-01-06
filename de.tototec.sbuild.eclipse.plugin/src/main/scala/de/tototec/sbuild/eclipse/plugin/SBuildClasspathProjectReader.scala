@@ -23,6 +23,8 @@ import org.eclipse.jdt.core.JavaCore
 import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 import java.net.URL
 import de.tototec.sbuild.runner.ClasspathConfig
+import java.util.zip.ZipInputStream
+import java.io.FileInputStream
 
 trait SBuildClasspathProjectReader {
   def buildFile: File
@@ -134,6 +136,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
 
     val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
     if (sbuildHomePath == null) {
+      error("Classpath variable 'SBUILD_HOME' not defined")
       throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined")
     }
     val sbuildHomeDir = sbuildHomePath.toFile
@@ -155,7 +158,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
       projectReader.readProject(sbuildProject, buildFile)
     } catch {
       case e: Throwable =>
-        debug("Could not read Project file. Cause: " + e.getMessage)
+        error("Could not read Project file. Cause: " + e.getMessage)
         throw e
     }
 
@@ -181,7 +184,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
             true
           } catch {
             case e: SBuildException =>
-              debug("Could not resolve dependency: " + target)
+              error("Could not resolve dependency: " + target)
               false
           }
           resolveActions = resolveActions ++ Seq(ResolveAction(target.file.getPath, targetRef.ref, action _))
@@ -217,7 +220,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
                 resolveActions = resolveActions ++ Seq(ResolveAction(target.file.getPath, targetRef.ref, action _))
 
               } catch {
-                case e: SBuildException => debug("Could not resolve dependency: " + targetRef + ". Reason: " + e.getMessage)
+                case e: SBuildException => error("Could not resolve dependency: " + targetRef + ". Reason: " + e.getMessage)
               }
           }
       }
@@ -230,7 +233,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
     unzip(archive, targetDir, selectedFiles.map(f => (f, null)).toList)
   }
 
-  def unzip(archive: File, targetDir: File, _selectedFiles: List[(String, File)]) {
+    def unzip(archive: File, targetDir: File, _selectedFiles: List[(String, File)]) {
 
     if (!archive.exists || !archive.isFile) throw new RuntimeException("Zip file cannot be found: " + archive);
     targetDir.mkdirs
@@ -242,11 +245,9 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
     if (partial) debug("Only extracting some content of zip file")
 
     try {
-      val zip = new ZipFile(archive)
-      val entries = zip.entries
-      while (entries.hasMoreElements && (!partial || !selectedFiles.isEmpty)) {
-        val zipEntry = entries.nextElement
-
+      val zipIs = new ZipInputStream(new FileInputStream(archive))
+      var zipEntry = zipIs.getNextEntry
+      while (zipEntry != null && (!partial || !selectedFiles.isEmpty)) {
         val extractFile: Option[File] = if (partial) {
           if (!zipEntry.isDirectory) {
             val candidate = selectedFiles.find { case (name, _) => name == zipEntry.getName }
@@ -283,25 +284,28 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
             && !targetFile.getParentFile.isDirectory) {
             throw new RuntimeException(
               "Expected directory is a file. Cannot extract zip content: "
-                + zipEntry.getName());
+                + zipEntry.getName);
           }
           // Ensure, that the directory exixts
           targetFile.getParentFile.mkdirs
           val outputStream = new BufferedOutputStream(new FileOutputStream(targetFile))
-          val inputStream = zip.getInputStream(zipEntry)
-          copy(inputStream, outputStream);
+          copy(zipIs, outputStream);
           outputStream.close
-          inputStream.close
-          if (zipEntry.getTime() > 0) {
+          if (zipEntry.getTime > 0) {
             targetFile.setLastModified(zipEntry.getTime)
           }
         }
+
+        zipEntry = zipIs.getNextEntry()
       }
+      
+      zipIs.close
     } catch {
       case e: IOException =>
         throw new RuntimeException("Could not unzip file: " + archive,
           e)
     }
+
   }
 
   private def copy(in: InputStream, out: OutputStream) {
