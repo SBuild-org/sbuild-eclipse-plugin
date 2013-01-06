@@ -32,6 +32,12 @@ trait SBuildClasspathProjectReader {
 }
 
 object SBuildClasspathProjectReader {
+
+  /**
+   * Load the SBuild installation (assumes, it is compiled against a binary compatible Scala version.
+   *
+   * TODO: First evaluate the required SBuild version of the project.
+   */
   def load(sbuildHomeDir: File, settings: Settings, projectRootFile: File): SBuildClasspathProjectReader = {
     // Idea: load the byte stream and save it to .sbuild/eclipse/...
     // Create classloader with SBuild-jars AND .sbuild/eclipse
@@ -83,13 +89,25 @@ object SBuildClasspathProjectReader {
 
     val classpathes = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties"))
 
+    // Create an classloader that contains the SBuild libraries and the SBuildClasspathProjectReader implementation. 
+    // The parent classloader is used to load all other dependencies, e.g. Scala runtime. 
     val sbuildClassloader = new URLClassLoader(
       Array(readerLibDir.toURI().toURL()) ++
         classpathes.sbuildClasspath.map { path =>
           new File(path).toURI.toURL
         },
       getClass.getClassLoader
-    )
+    ) {
+      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+        try {
+          super.loadClass(name, resolve)
+        } catch {
+          case e: ClassNotFoundException =>
+            error("Could not found required class: " + name, e)
+            throw e
+        }
+      }
+    }
     //    {
     //      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
     //        val parent: ClassLoader = getClass.getClassLoader
@@ -233,7 +251,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
     unzip(archive, targetDir, selectedFiles.map(f => (f, null)).toList)
   }
 
-    def unzip(archive: File, targetDir: File, _selectedFiles: List[(String, File)]) {
+  def unzip(archive: File, targetDir: File, _selectedFiles: List[(String, File)]) {
 
     if (!archive.exists || !archive.isFile) throw new RuntimeException("Zip file cannot be found: " + archive);
     targetDir.mkdirs
@@ -298,7 +316,7 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
 
         zipEntry = zipIs.getNextEntry()
       }
-      
+
       zipIs.close
     } catch {
       case e: IOException =>

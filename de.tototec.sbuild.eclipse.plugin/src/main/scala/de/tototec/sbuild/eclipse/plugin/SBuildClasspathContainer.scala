@@ -117,7 +117,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         val newContainer = new SBuildClasspathContainer(this)
         JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor())
       } catch {
-        case e => error("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
+        case e: Throwable => error("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
       }
     }
     inBackground match {
@@ -204,12 +204,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       debug("Classpath evaluated for the first time or it did not change for " + project)
     }
 
-    this.classpathEntries.get
+    // this.classpathEntries.get
 
   } catch {
-    case e: Exception =>
-      debug("Could not calculate classpath entries.", e)
-      Array()
+    case e: Throwable =>
+      error("Could not calculate classpath entries for project " + project.getProject.getName, e)
   }
 
   override def getClasspathEntries: Array[IClasspathEntry] = {
