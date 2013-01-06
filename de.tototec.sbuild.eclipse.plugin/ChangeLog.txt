@@ -1,4 +1,4 @@
-SBuild Eclispe Plugin 0.3.0
+SBuild Eclispe Plugin 0.3.0 - 2013-01-06
 
 * Switched to Scala 2.10.
 * Supported SBuild version is now 0.3.0 or above because of Scala 2.10 binary
