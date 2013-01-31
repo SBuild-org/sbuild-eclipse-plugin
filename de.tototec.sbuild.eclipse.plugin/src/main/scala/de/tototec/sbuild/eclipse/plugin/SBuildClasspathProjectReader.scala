@@ -25,6 +25,9 @@ import java.net.URL
 import de.tototec.sbuild.runner.ClasspathConfig
 import java.util.zip.ZipInputStream
 import java.io.FileInputStream
+import java.lang.reflect.Method
+import java.lang.reflect.Constructor
+import de.tototec.sbuild.ExportDependencies
 
 trait SBuildClasspathProjectReader {
   def buildFile: File
@@ -39,63 +42,37 @@ object SBuildClasspathProjectReader {
    * TODO: First evaluate the required SBuild version of the project.
    */
   def load(sbuildHomeDir: File, settings: Settings, projectRootFile: File): SBuildClasspathProjectReader = {
-    // Idea: load the byte stream and save it to .sbuild/eclipse/...
-    // Create classloader with SBuild-jars AND .sbuild/eclipse
-
-    val readerLibDir = new File(projectRootFile, ".sbuild/eclipse")
-    val destDir = new File(readerLibDir, "de/tototec/sbuild/eclipse/plugin")
-    destDir.mkdirs
-
-    val readerImplClassName = "de.tototec.sbuild.eclipse.plugin.SBuildClasspathProjectReaderImpl"
-
-    val activator = SBuildClasspathActivator.activator
-    val bundleContext = activator.bundleContext
-    val bundle = bundleContext.getBundle
-    val prefix = "OSGI-INF/projectReaderLib/"
-    val relevantClassURLs = bundle.findEntries(
-      prefix + "de/tototec/sbuild/eclipse/plugin", "SBuildClasspathProjectReaderImpl*.class", false)
-
-    // copy class files into project
-    relevantClassURLs match {
-      case null =>
-        throw new RuntimeException("Could not found classfile(s) for de.tototec.sbuild.eclipse.plugin.SBuildClasspathProjectReaderImpl")
-      case x =>
-        def copyStream(sourceUrl: URL, outputFile: File) {
-          val in = sourceUrl.openStream
-          val out = new FileOutputStream(outputFile)
-          try {
-            val buf = new Array[Byte](1024)
-            var len = 0
-            while ({
-              len = in.read(buf)
-              len > 0
-            }) {
-              out.write(buf, 0, len)
-            }
-          } finally {
-            if (out != null) {
-              out.close
-            }
-          }
-        }
-
-        x.foreach {
-          case url: URL =>
-            val name = url.getPath.substring(prefix.length)
-            val targetFile = new File(readerLibDir, name)
-            copyStream(url, targetFile)
-        }
-    }
 
     val classpathes = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties"))
+
+    val projectFile = new File(projectRootFile, settings.sbuildFile)
+
+    new EmbeddedSBuildClasspathProjectReader(classpathes, projectFile, settings.exportedClasspath)
+  }
+}
+
+class EmbeddedSBuildClasspathProjectReader(
+  classpathes: Classpathes,
+  override val buildFile: File,
+  exportedClasspath: String)
+    extends SBuildClasspathProjectReader {
+
+  protected lazy val (
+    sbuildHomeDir: File,
+    sbuildEmbeddedClassCtr: Constructor[_],
+    exportedDependenciesMethod: Method,
+    resolveMethod: Method,
+    dependenciesMethod: Method,
+    fileDependenciesMethod: Method,
+    depToFileMapMethod: Method
+    ) = {
 
     // Create an classloader that contains the SBuild libraries and the SBuildClasspathProjectReader implementation. 
     // The parent classloader is used to load all other dependencies, e.g. Scala runtime. 
     val sbuildClassloader = new URLClassLoader(
-      Array(readerLibDir.toURI().toURL()) ++
-        classpathes.sbuildClasspath.map { path =>
-          new File(path).toURI.toURL
-        },
+      classpathes.embeddedClasspath.map { path =>
+        new File(path).toURI.toURL
+      },
       getClass.getClassLoader
     ) {
       override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
@@ -103,54 +80,20 @@ object SBuildClasspathProjectReader {
           super.loadClass(name, resolve)
         } catch {
           case e: ClassNotFoundException =>
+            // TODO: If the class is e.g. SBuild$$annonfun..., than, the reason might be, 
+            // that someone cleaned and/or recompiled the build script outside eclipse.
+            // we might be able to recover from this, by throwing a special marker exception. 
+            // The ClasspathContainer could handle it by re-creating the SBuild project classpath container loader.
             error("Could not found required class: " + name, e)
             throw e
         }
       }
     }
-    //    {
-    //      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
-    //        val parent: ClassLoader = getClass.getClassLoader
-    //        val noParent = name == readerImplClassName
-    //
-    //        val loadedClass = findLoadedClass(name) match {
-    //          // not loaded, but special loading required
-    //          case null if noParent => findClass(name)
-    //          // not loaded, but first try parent, then us
-    //          case null => try {
-    //            parent.loadClass(name)
-    //          } catch {
-    //            case e: ClassNotFoundException => findClass(name)
-    //          }
-    //          // already loaded
-    //          case x => x
-    //        }
-    //
-    //        if (resolve) {
-    //          resolveClass(loadedClass)
-    //        }
-    //
-    //        loadedClass
-    //      }
-    //    }
 
-    val readerClass = sbuildClassloader.loadClass(readerImplClassName);
-    val readerClassCtr = readerClass.getConstructor(classOf[Settings], classOf[File])
-    val reader = readerClassCtr.newInstance(settings, projectRootFile);
+    val sbuildEmbeddedClass = sbuildClassloader.loadClass("de.tototec.sbuild.embedded.SBuildEmbedded");
+    val sbuildEmbeddedClassCtr = sbuildEmbeddedClass.getConstructor(classOf[File], classOf[File])
 
-    reader.asInstanceOf[SBuildClasspathProjectReader]
-  }
-}
-
-class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File) extends SBuildClasspathProjectReader {
-
-  private val config = new Config()
-  config.verbose = true
-  config.buildfile = settings.sbuildFile
-
-  override val buildFile = new File(projectRootFile, config.buildfile)
-
-  override def readResolveActions: Seq[ResolveAction] = {
+    // val projectFile = new File(projectRootFile, settings.sbuildFile)
 
     val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
     if (sbuildHomePath == null) {
@@ -158,184 +101,63 @@ class SBuildClasspathProjectReaderImpl(settings: Settings, projectRootFile: File
       throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined")
     }
     val sbuildHomeDir = sbuildHomePath.toFile
-    debug("Trying to use SBuild " + SBuildVersion.version + " installed at: " + sbuildHomeDir)
+    //    debug("Trying to use SBuild " + SBuildVersion.version + " installed at: " + sbuildHomeDir)
+    debug("Trying to use SBuild installed at: " + sbuildHomeDir)
 
-    val classpathConfig = new ClasspathConfig
-    classpathConfig.sbuildHomeDir = sbuildHomeDir
-    classpathConfig.noFsc = true
+    val sbuildVersionClass = sbuildClassloader.loadClass("de.tototec.sbuild.SBuildVersion")
+    val versionMethod = sbuildVersionClass.getMethod("version")
+    debug("SBuild version: " + versionMethod.invoke(null))
 
-    debug("About to read project")
-    val projectReader: ProjectReader = new SimpleProjectReader(config, classpathConfig)
+    val exportedDependenciesResolverClass = sbuildClassloader.loadClass("de.tototec.sbuild.embedded.ExportedDependenciesResolver")
+    val exportedDependenciesMethod = sbuildEmbeddedClass.getMethod("exportedDependencies", classOf[String])
 
-    implicit val sbuildProject = new Project(buildFile, projectReader)
-    config.defines foreach {
-      case (key, value) => sbuildProject.addProperty(key, value)
-    }
+    val dependenciesMethod = exportedDependenciesResolverClass.getMethod("dependencies")
 
-    debug("About to read SBuild project: " + buildFile);
-    try {
-      projectReader.readProject(sbuildProject, buildFile)
-    } catch {
-      case e: Throwable =>
-        error("Could not read Project file. Cause: " + e.getMessage)
-        throw e
-    }
+    val fileDependenciesMethod = exportedDependenciesResolverClass.getMethod("fileDependencies")
 
-    val depsXmlString = sbuildProject.properties.getOrElse(settings.exportedClasspath, "<deps></deps>")
-    debug("Determine Eclipse classpath by evaluating '" + settings.exportedClasspath + "' to: " + depsXmlString)
-    val depsXml = XML.loadString(depsXmlString)
+    val depToFileMapMethod = exportedDependenciesResolverClass.getMethod("depToFileMap")
 
-    val deps: Seq[String] = (depsXml \ "dep") map {
-      depXml => depXml.text
-    }
+    val resolveMethod = exportedDependenciesResolverClass.getMethod("resolve", classOf[File])
+
+    (sbuildHomeDir, sbuildEmbeddedClassCtr, exportedDependenciesMethod, resolveMethod, dependenciesMethod, fileDependenciesMethod, depToFileMapMethod)
+  }
+
+  override def readResolveActions: Seq[ResolveAction] = {
+
+    val sbuildEmbedded = sbuildEmbeddedClassCtr.newInstance(buildFile, sbuildHomeDir)
+    val exportedDependenciesResolver = exportedDependenciesMethod.invoke(sbuildEmbedded, exportedClasspath)
+    val deps: Seq[String] = dependenciesMethod.invoke(exportedDependenciesResolver).asInstanceOf[Seq[String]]
+    val fileDeps: Seq[File] = fileDependenciesMethod.invoke(exportedDependenciesResolver).asInstanceOf[Seq[File]]
+    val depToFileMap: Map[String, Seq[File]] = depToFileMapMethod.invoke(exportedDependenciesResolver).asInstanceOf[Map[String, Seq[File]]]
 
     var resolveActions = Seq[ResolveAction]()
 
-    val depsAsTargetRefs = deps.map(TargetRef(_))
-
-    depsAsTargetRefs.foreach { targetRef =>
-
-      sbuildProject.findTarget(targetRef) match {
-        case Some(target) =>
-          // we have a target for this, so we need to resolve it, when required
-          def action: Boolean = try {
-            SBuildRunner.preorderedDependencies(request = List(target))
-            true
-          } catch {
-            case e: SBuildException =>
-              error("Could not resolve dependency: " + target)
-              false
-          }
-          resolveActions = resolveActions ++ Seq(ResolveAction(target.file.getPath, targetRef.ref, action _))
-        case None =>
-          targetRef.explicitProto match {
-            case None | Some("file") =>
-              // this is a file, so we need simply to add it to the classpath
-              // but first, we check that it is absolute or if not, we make it absolute (based on their project)
-              val file = new File(targetRef.name) match {
-                case f if f.isAbsolute => f
-                case _ => targetRef.explicitProject match {
-                  case None => new File(projectRootFile, targetRef.name)
-                  case Some(projFile: File) if projFile.isFile => new File(projFile.getParentFile, targetRef.name)
-                  case Some(projDir: File) => new File(projDir, targetRef.name)
-                }
-              }
-              resolveActions = resolveActions ++ Seq(ResolveAction(file.getPath, targetRef.ref, file.exists _))
-            case Some("phony") =>
-              // This is a phony target, we will ignore it for now
-              debug("Ignoring phony target: " + targetRef)
-            case _ =>
-              // A scheme we might have a scheme handler for
-              try {
-                val target = sbuildProject.createTarget(targetRef)
-                def action: Boolean = try {
-                  SBuildRunner.preorderedDependencies(request = List(target))
+    depToFileMap.foreach {
+      case (dep, files) =>
+        files.toList match {
+          case Nil =>
+            // ignore phony target
+            debug(s"""Ignoring phony dependency "${dep}"""")
+          case file :: tail =>
+            // only take first file
+            def action: Boolean = {
+              val resolved: Either[String, File] = resolveMethod.invoke(exportedDependenciesResolver, file).asInstanceOf[Either[String, File]]
+              resolved match {
+                case Right(file) =>
+                  debug(s"""Resolved dependency "${dep}" to file: """ + file)
                   true
-                } catch {
-                  case e: SBuildException =>
-                    debug("Could not resolve dependency: " + target)
-                    false
-                }
-                resolveActions = resolveActions ++ Seq(ResolveAction(target.file.getPath, targetRef.ref, action _))
-
-              } catch {
-                case e: SBuildException => error("Could not resolve dependency: " + targetRef + ". Reason: " + e.getMessage)
+                case Left(msg) =>
+                  error(s"""Could not resolve dependency "${dep}". Reason: """ + msg)
+                  false
               }
-          }
-      }
+            }
+            resolveActions ++= Seq(ResolveAction(file.getAbsolutePath, dep, action _))
+
+            if (!tail.isEmpty) debug(s"""Dependency "${dep}" produced more than one file. Only the first one is currently used.""")
+        }
     }
 
     resolveActions
   }
-
-  def unzip(archive: File, targetDir: File, selectedFiles: String*) {
-    unzip(archive, targetDir, selectedFiles.map(f => (f, null)).toList)
-  }
-
-  def unzip(archive: File, targetDir: File, _selectedFiles: List[(String, File)]) {
-
-    if (!archive.exists || !archive.isFile) throw new RuntimeException("Zip file cannot be found: " + archive);
-    targetDir.mkdirs
-
-    debug("Extracting zip archive '" + archive + "' to: " + targetDir)
-
-    var selectedFiles = _selectedFiles
-    val partial = !selectedFiles.isEmpty
-    if (partial) debug("Only extracting some content of zip file")
-
-    try {
-      val zipIs = new ZipInputStream(new FileInputStream(archive))
-      var zipEntry = zipIs.getNextEntry
-      while (zipEntry != null && (!partial || !selectedFiles.isEmpty)) {
-        val extractFile: Option[File] = if (partial) {
-          if (!zipEntry.isDirectory) {
-            val candidate = selectedFiles.find { case (name, _) => name == zipEntry.getName }
-            if (candidate.isDefined) {
-              selectedFiles = selectedFiles.filterNot(_ == candidate.get)
-              if (candidate.get._2 != null) {
-                Some(candidate.get._2)
-              } else {
-                val full = zipEntry.getName
-                val index = full.lastIndexOf("/")
-                val name = if (index < 0) full else full.substring(index)
-                Some(new File(targetDir + "/" + name))
-              }
-            } else {
-              None
-            }
-          } else {
-            None
-          }
-        } else {
-          if (zipEntry.isDirectory) {
-            debug("  Creating " + zipEntry.getName);
-            new File(targetDir + "/" + zipEntry.getName).mkdirs
-            None
-          } else {
-            Some(new File(targetDir + "/" + zipEntry.getName))
-          }
-        }
-
-        if (extractFile.isDefined) {
-          debug("  Extracting " + zipEntry.getName);
-          val targetFile = extractFile.get
-          if (targetFile.exists
-            && !targetFile.getParentFile.isDirectory) {
-            throw new RuntimeException(
-              "Expected directory is a file. Cannot extract zip content: "
-                + zipEntry.getName);
-          }
-          // Ensure, that the directory exixts
-          targetFile.getParentFile.mkdirs
-          val outputStream = new BufferedOutputStream(new FileOutputStream(targetFile))
-          copy(zipIs, outputStream);
-          outputStream.close
-          if (zipEntry.getTime > 0) {
-            targetFile.setLastModified(zipEntry.getTime)
-          }
-        }
-
-        zipEntry = zipIs.getNextEntry()
-      }
-
-      zipIs.close
-    } catch {
-      case e: IOException =>
-        throw new RuntimeException("Could not unzip file: " + archive,
-          e)
-    }
-
-  }
-
-  private def copy(in: InputStream, out: OutputStream) {
-    val buf = new Array[Byte](1024)
-    var len = 0
-    while ({
-      len = in.read(buf)
-      len > 0
-    }) {
-      out.write(buf, 0, len)
-    }
-  }
-
 }
+

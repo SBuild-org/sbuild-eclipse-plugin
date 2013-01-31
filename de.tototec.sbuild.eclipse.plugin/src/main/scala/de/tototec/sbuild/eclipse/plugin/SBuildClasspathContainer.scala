@@ -91,19 +91,21 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     if (resolveActions.isEmpty) {
       info("Reading project for the first time: " + project.getProject.getName)
-    } else if (buildFile.lastModified() != sbuildFileTimestamp) {
+    } else if (buildFile.lastModified != sbuildFileTimestamp) {
+      // drop previously read actions
+      resolveActions = None
       info("Build file has changed. Reading project again: " + project.getProject.getName)
     }
 
     synchronized {
-      if (this.resolveActions.isDefined && buildFile.lastModified() == this.sbuildFileTimestamp) {
+      if (this.resolveActions.isDefined) {
         // already read the project
         debug("Already read the project")
         false
       } else {
         debug("Reading project and resolve action definitions")
 
-        this.resolveActions = Some(reader.readResolveActions)
+        this.resolveActions = Option(reader.readResolveActions)
         this.sbuildFileTimestamp = buildFile.lastModified()
 
         true

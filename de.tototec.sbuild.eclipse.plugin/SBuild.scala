@@ -3,22 +3,13 @@ import de.tototec.sbuild.TargetRefs._
 import de.tototec.sbuild.ant._
 import de.tototec.sbuild.ant.tasks._
 
-@version("0.3.0")
-@include(
-  "FeatureBuilder.scala"
-)
-@classpath(
-  "http://repo1.maven.org/maven2/org/apache/ant/ant/1.8.4/ant-1.8.4.jar",
-  "http://dl.dropbox.com/u/2590603/bnd/biz.aQute.bnd.jar"
-)
+@version("0.3.2")
+@include("FeatureBuilder.scala")
+@classpath("mvn:org.apache.ant:ant:1.8.4")
 class SBuild(implicit _project: Project) {
 
-  SchemeHandler("http", new HttpSchemeHandler())
-  SchemeHandler("mvn", new MvnSchemeHandler())
-  SchemeHandler("zip", new ZipSchemeHandler())
-
-  // val version = "0.2.1.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
-  val version = "0.3.0"
+  val version = "0.3.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
+  // val version = "0.3.0"
   val eclipseJar = s"target/de.tototec.sbuild.eclipse.plugin_${version}.jar"
 
   val featureXml = "target/feature/feature.xml"
@@ -39,7 +30,10 @@ class SBuild(implicit _project: Project) {
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
-  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/45/de.tototec.sbuild-0.3.0.jar"
+  // val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/45/de.tototec.sbuild-0.4.0.jar"
+  val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9000.jar"
+
+  val bndCp = "mvn:biz.aQute:bndlib:1.50.0"
 
   val compilerCp =
     s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
@@ -87,7 +81,7 @@ class SBuild(implicit _project: Project) {
     IfNotUpToDate(srcDir = Path(input), stateDir = Path("target"), ctx = ctx) {
       AntMkdir(dir = Path(output))
       addons.scala.Scalac(
-        target = "jvm-1.5",
+        target = "jvm-1.6",
         encoding = "UTF-8",
         deprecation = true,
         unchecked = true,
@@ -101,59 +95,33 @@ class SBuild(implicit _project: Project) {
     }
   }
 
-  Target("target/bnd.bnd") dependsOn _project.projectFile exec { ctx: TargetContext =>
-    val bnd = """
-Bundle-SymbolicName: de.tototec.sbuild.eclipse.plugin;singleton:=true
-Bundle-Version: """ + version + """
-Bundle-Activator: de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
-Bundle-ActivationPolicy: lazy
-Implementation-Version: ${Bundle-Version}
-Private-Package: \
- de.tototec.sbuild.eclipse.plugin, \
- de.tototec.sbuild.eclipse.plugin.internal
-Import-Package: \
- !de.tototec.sbuild.*, \
- !de.tototec.cmdoption.*, \
- org.eclipse.core.runtime;registry=!;common=!;version="3.3.0", \
- org.eclipse.core.internal.resources, \
- *
-DynamicImport-Package: \
- !scala.tools.*, \
- scala.*
-Include-Resource: """ + Path("src/main/resources") + """,""" + Path("target/bnd-resources") + """
--removeheaders: Include-Resource
-Bundle-RequiredExecutionEnvironment: J2SE-1.5
-"""
-    AntEcho(message = bnd, file = ctx.targetFile.get)
-  }
+  Target("phony:jar") dependsOn eclipseJar
 
-  Target(eclipseJar) dependsOn compilerCp ~ compileCp ~ "compile" ~ "target/bnd.bnd" exec { ctx: TargetContext =>
-    //     val jarTask = new AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/classes"))
-    //     jarTask.addFileset(AntFileSet(dir = Path("."), includes = "LICENSE.txt"))
-    //     jarTask.execute
-
-    val bndClasses = "target/bnd-classes"
-    val projectReaderLib = "target/bnd-resources/OSGI-INF/projectReaderLib"
-    val projectReaderPattern = "**/SBuildClasspathProjectReaderImpl**.class"
-
-    AntDelete(dir = Path(bndClasses))
-    new AntCopy(toDir = Path(bndClasses)) {
-      addFileset(AntFileSet(dir = Path("target/classes"), excludes = projectReaderPattern))
-    }.execute
-
-    AntDelete(dir = Path(projectReaderLib))
-    AntMkdir(dir = Path(projectReaderLib))
-    new AntCopy(toDir = Path(projectReaderLib)) {
-      addFileset(AntFileSet(dir = Path("target/classes"), includes = projectReaderPattern))
-    }.execute
-
-    aQute_bnd_ant.AntBnd(
-      classpath = bndClasses + "," + ctx.fileDependencies.filter(_.getName.endsWith(".jar")).mkString(","),
-      eclipse = false,
-      failOk = false,
-      exceptions = true,
-      files = ctx.fileDependencies.filter(_.getName.endsWith(".bnd")).mkString(","),
-      output = ctx.targetFile.get)
+  Target(eclipseJar) dependsOn compilerCp ~ compileCp ~ "compile" ~ bndCp exec { ctx: TargetContext =>
+    addons.bnd.BndJar(
+      bndClasspath = bndCp.files,
+      classpath = Seq(Path("target/classes")) ++ compileCp.files,
+      destFile = ctx.targetFile.get,
+      props = Map(
+        "Bundle-SymbolicName" -> "de.tototec.sbuild.eclipse.plugin;singleton:=true",
+        "Bundle-Version" -> version,
+        "Bundle-Activator" -> "de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator",
+        "Bundle-ActivationPolicy" -> "lazy",
+        "Implementation-Version" -> "${Bundle-Version}",
+        "Private-Package" -> """de.tototec.sbuild.eclipse.plugin, 
+                                de.tototec.sbuild.eclipse.plugin.internal""",
+        "Import-Package" -> """!de.tototec.sbuild.*,
+                               !de.tototec.cmdoption.*,
+                               org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
+                               org.eclipse.core.internal.resources,
+                               *""",
+        "DynamicImport-Package" -> """!scala.tools.*,
+                                      scala.*""",
+        "Include-Resource" -> """src/main/resources""",
+        "-removeheaders" -> "Include-Resource",
+        "Bundle-RequiredExecutionEnvironment" -> "JavaSE-1.6"
+      )
+    )
   }
 
   Target(featureProperties) exec { ctx: TargetContext =>

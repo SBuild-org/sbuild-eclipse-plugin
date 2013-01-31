@@ -3,8 +3,8 @@ import de.tototec.sbuild.ant._
 import de.tototec.sbuild.ant.tasks._
 import de.tototec.sbuild.TargetRefs._
 
-@version("0.1.4")
-class SBuild(implicit project: Project) {
+@version("0.3.0")
+class SBuild(implicit _project: Project) {
 
   val tClean = Target("phony:clean")
   val tAll = Target("phony:all")

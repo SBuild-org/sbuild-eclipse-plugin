@@ -25,15 +25,17 @@ object Classpathes {
     }
 
     Classpathes(
-      splitAndPrepend(properties.getProperty("sbuildClasspath")),
-      splitAndPrepend(properties.getProperty("compileClasspath")),
-      splitAndPrepend(properties.getProperty("projectClasspath"))
+      //      splitAndPrepend(properties.getProperty("sbuildClasspath")),
+      //      splitAndPrepend(properties.getProperty("compileClasspath")),
+      //      splitAndPrepend(properties.getProperty("projectClasspath")),
+      splitAndPrepend(properties.getProperty("embeddedClasspath"))
     )
   }
 
 }
 
 case class Classpathes(
-  sbuildClasspath: Array[String],
-  compileClasspath: Array[String],
-  projectClasspath: Array[String])
+  //  sbuildClasspath: Array[String],
+  //  compileClasspath: Array[String],
+  //  projectClasspath: Array[String],
+  embeddedClasspath: Array[String])

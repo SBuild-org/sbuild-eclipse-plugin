@@ -80,4 +80,5 @@ class Settings {
     case RelaxedFetchOfDependenciesDefault => options -= RelaxedFetchOfDependenciesKey
     case x => options += (RelaxedFetchOfDependenciesKey -> x)
   }
+
 }
