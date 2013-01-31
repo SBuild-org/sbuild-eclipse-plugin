@@ -61,7 +61,7 @@ class EmbeddedSBuildClasspathProjectReader(
     sbuildHomeDir: File,
     sbuildEmbeddedClassCtr: Constructor[_],
     exportedDependenciesMethod: Method,
-    resolveMethod: Method,
+    resolveToFileMethod: Method,
     dependenciesMethod: Method,
     fileDependenciesMethod: Method,
     depToFileMapMethod: Method
@@ -117,9 +117,9 @@ class EmbeddedSBuildClasspathProjectReader(
 
     val depToFileMapMethod = exportedDependenciesResolverClass.getMethod("depToFileMap")
 
-    val resolveMethod = exportedDependenciesResolverClass.getMethod("resolve", classOf[File])
+    val resolveToFileMethod = exportedDependenciesResolverClass.getMethod("resolveToFile", classOf[String])
 
-    (sbuildHomeDir, sbuildEmbeddedClassCtr, exportedDependenciesMethod, resolveMethod, dependenciesMethod, fileDependenciesMethod, depToFileMapMethod)
+    (sbuildHomeDir, sbuildEmbeddedClassCtr, exportedDependenciesMethod, resolveToFileMethod, dependenciesMethod, fileDependenciesMethod, depToFileMapMethod)
   }
 
   override def readResolveActions: Seq[ResolveAction] = {
@@ -141,10 +141,11 @@ class EmbeddedSBuildClasspathProjectReader(
           case file :: tail =>
             // only take first file
             def action: Boolean = {
-              val resolved: Either[String, File] = resolveMethod.invoke(exportedDependenciesResolver, file).asInstanceOf[Either[String, File]]
+              val resolved: Either[String, File] = resolveToFileMethod.invoke(exportedDependenciesResolver, dep).asInstanceOf[Either[String, File]]
               resolved match {
                 case Right(file) =>
                   debug(s"""Resolved dependency "${dep}" to file: """ + file)
+                  if (!file.exists) error("Resolved file does not exists: " + file)
                   true
                 case Left(msg) =>
                   error(s"""Could not resolve dependency "${dep}". Reason: """ + msg)

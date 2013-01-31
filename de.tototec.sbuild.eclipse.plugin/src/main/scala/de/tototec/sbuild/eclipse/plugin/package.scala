@@ -11,7 +11,7 @@ package object plugin {
       Console.err.println(cause.getMessage())
       cause.printStackTrace(Console.err)
     }
-    //    SBuildClasspathActivator.activator.log(IStatus.INFO, msg, cause)
+    SBuildClasspathActivator.activator.log(IStatus.INFO, msg, cause)
   }
 
   /** Print an info message. */
@@ -24,7 +24,7 @@ package object plugin {
     SBuildClasspathActivator.activator.log(IStatus.INFO, msg, cause)
   }
 
-    /** Print an error message. */
+  /** Print an error message. */
   private[plugin] def error(msg: => String, cause: Throwable = null) = {
     Console.err.println(msg)
     if (cause != null) {
@@ -34,7 +34,7 @@ package object plugin {
     SBuildClasspathActivator.activator.log(IStatus.ERROR, msg, cause)
   }
 
-      /** Print a warn message. */
+  /** Print a warn message. */
   private[plugin] def warn(msg: => String, cause: Throwable = null) = {
     Console.err.println(msg)
     if (cause != null) {
@@ -43,6 +43,5 @@ package object plugin {
     }
     SBuildClasspathActivator.activator.log(IStatus.WARNING, msg, cause)
   }
-
 
 }

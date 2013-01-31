@@ -106,7 +106,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         debug("Reading project and resolve action definitions")
 
         this.resolveActions = Option(reader.readResolveActions)
-        this.sbuildFileTimestamp = buildFile.lastModified()
+        this.sbuildFileTimestamp = buildFile.lastModified
 
         true
       }
