@@ -31,7 +31,7 @@ class SBuild(implicit _project: Project) {
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
   // val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/45/de.tototec.sbuild-0.4.0.jar"
-  val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9000.jar"
+  val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
 
   val bndCp = "mvn:biz.aQute:bndlib:1.50.0"
 

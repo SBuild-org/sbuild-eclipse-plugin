@@ -12,9 +12,9 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
   override def resourceChanged(event: IResourceChangeEvent) {
     event.getType match {
-//      case IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.PRE_DELETE =>
-//        val project = getProject(event.getResource)
-//        project.map { p => projectClosed(p) }
+      //      case IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.PRE_DELETE =>
+      //        val project = getProject(event.getResource)
+      //        project.map { p => projectClosed(p) }
 
       case IResourceChangeEvent.POST_CHANGE =>
         event.getDelta match {
@@ -51,16 +51,16 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
       val projectNames = projects.map { _.getName }
 
-      info("Changed projects: " + projects.map(p => p.getName + (if(p.isOpen) " opened" else " closed")).mkString(", "))
+      info("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
       val sbuildContainers = SBuildClasspathContainer.getSBuildClasspathContainers(openJavaProjects)
       sbuildContainers.foreach { c =>
         if (c.dependsOnWorkspaceProjects(projectNames)) {
-        	info("Trigger update SBuild Libraries of project: " + c.project.getProject.getName)
-        	// trigger a recalculation
-        	c.updateClasspathEntries
+          info("Trigger update SBuild Libraries of project: " + c.project.getProject.getName)
+          // trigger a recalculation
+          c.updateClasspathEntries
         }
       }
 
