@@ -3,18 +3,20 @@ import de.tototec.sbuild.TargetRefs._
 import de.tototec.sbuild.ant._
 import de.tototec.sbuild.ant.tasks._
 
-@version("0.3.2")
+@version("0.4.0")
 @include("FeatureBuilder.scala")
 @classpath("mvn:org.apache.ant:ant:1.8.4")
 class SBuild(implicit _project: Project) {
 
+  val namespace = "de.tototec.sbuild.eclipse.plugin"
+
   val version = "0.3.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
   // val version = "0.3.0"
-  val eclipseJar = s"target/de.tototec.sbuild.eclipse.plugin_${version}.jar"
+  val eclipseJar = s"target/${namespace}_${version}.jar"
 
   val featureXml = "target/feature/feature.xml"
   val featureProperties = "target/feature/feature.properties"
-  val featureJar = s"target/de.tototec.sbuild.eclipse.plugin.feature_${version}.jar"
+  val featureJar = s"target/${namespace}.feature_${version}.jar"
 
   val scalaLibBundleId = "org.scala-ide.scala.library"
   val scalaLibBundleVersion = "2.10.0.v20121205-112020-18481cef9b"
@@ -22,7 +24,7 @@ class SBuild(implicit _project: Project) {
   val scalaLibBundle = s"http://download.scala-ide.org/nightly-update-juno-master-2.10.x/plugins/${scalaLibBundleName}"
 
   val scalaLibFeatureXml = "target/scala-feature/feature.xml"
-  val scalaLibFeatureJar = s"target/de.tototec.sbuild.eclipse.plugin.scala-library.feature_${scalaLibBundleVersion}.jar"
+  val scalaLibFeatureJar = s"target/${namespace}.scala-library.feature_${scalaLibBundleVersion}.jar"
 
   val updateSiteZip = s"target/sbuild-eclipse-plugin-update-site-${version}.zip"
 
@@ -30,8 +32,8 @@ class SBuild(implicit _project: Project) {
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
-  // val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/45/de.tototec.sbuild-0.4.0.jar"
-  val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
+  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
+  // val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
 
   val bndCp = "mvn:biz.aQute:bndlib:1.50.0"
 
@@ -59,7 +61,7 @@ class SBuild(implicit _project: Project) {
       "mvn:org.eclipse.equinox:registry:3.3.0-v20070522" ~
       "mvn:org.eclipse.equinox:preferences:3.2.100-v20070522" ~
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
-      "http://cmdoption.tototec.de/cmdoption/attachments/download/6/de.tototec.cmdoption-0.2.0.jar"
+      "mvn:de.tototec:de.tototec.cmdoption:0.2.1"
 
   val testCp =
     compileCp ~
@@ -69,47 +71,40 @@ class SBuild(implicit _project: Project) {
 
   ExportDependencies("eclipse.classpath", testCp)
 
-  Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip
+  Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip ~ "test"
 
-  Target("phony:clean") exec {
+  Target("phony:clean").evictCache exec {
     AntDelete(dir = Path("target"))
   }
 
-  Target("phony:compile") dependsOn compilerCp ~ compileCp exec { ctx: TargetContext =>
+  Target("phony:compile").cacheable dependsOn compilerCp ~ compileCp ~ "scan:src/main/scala" exec { ctx: TargetContext =>
     val input = "src/main/scala"
     val output = "target/classes"
-    IfNotUpToDate(srcDir = Path(input), stateDir = Path("target"), ctx = ctx) {
-      AntMkdir(dir = Path(output))
-      addons.scala.Scalac(
-        target = "jvm-1.6",
-        encoding = "UTF-8",
-        deprecation = true,
-        unchecked = true,
-        debugInfo = "vars",
-        fork = true,
-        srcDir = Path(input),
-        destDir = Path(output),
-        compilerClasspath = ctx.fileDependencies,
-        classpath = ctx.fileDependencies
-      )
-    }
+
+    addons.scala.Scalac(
+      deprecation = true, unchecked = true, debugInfo = "vars",
+      sources = "scan:src/main/scala".files,
+      destDir = Path(output),
+      compilerClasspath = compilerCp.files,
+      classpath = compileCp.files
+    )
   }
 
   Target("phony:jar") dependsOn eclipseJar
 
-  Target(eclipseJar) dependsOn compilerCp ~ compileCp ~ "compile" ~ bndCp exec { ctx: TargetContext =>
+  Target(eclipseJar) dependsOn compileCp ~ "compile" ~ bndCp ~ "scan:src/main/resources" exec { ctx: TargetContext =>
     addons.bnd.BndJar(
       bndClasspath = bndCp.files,
       classpath = Seq(Path("target/classes")) ++ compileCp.files,
       destFile = ctx.targetFile.get,
       props = Map(
-        "Bundle-SymbolicName" -> "de.tototec.sbuild.eclipse.plugin;singleton:=true",
+        "Bundle-SymbolicName" -> s"${namespace};singleton:=true",
         "Bundle-Version" -> version,
-        "Bundle-Activator" -> "de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator",
+        "Bundle-Activator" -> s"${namespace}.internal.SBuildClasspathActivator",
         "Bundle-ActivationPolicy" -> "lazy",
         "Implementation-Version" -> "${Bundle-Version}",
-        "Private-Package" -> """de.tototec.sbuild.eclipse.plugin, 
-                                de.tototec.sbuild.eclipse.plugin.internal""",
+        "Private-Package" -> s"""${namespace}, 
+                                 ${namespace}.internal""",
         "Import-Package" -> """!de.tototec.sbuild.*,
                                !de.tototec.cmdoption.*,
                                org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
@@ -139,11 +134,11 @@ class SBuild(implicit _project: Project) {
     val updateSiteUrl = "http://sbuild.tototec.de/svn/eclipse-update-site/stable"
 
     val featureXml = FeatureBuilder.createFeatureXml(
-      id = "de.tototec.sbuild.eclipse.plugin.feature",
+      id = s"${namespace}.feature",
       version = version,
       label = "SBuild Eclipse Plugin Feature",
       providerName = "ToToTec GbR",
-      brandingPlugin = "de.tototec.sbuild.eclipse.plugin",
+      brandingPlugin = namespace,
       license = "%license",
       licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0",
       copyright = "Copyright © 2012, 2013, ToToTec GbR, Tobias Roeser",
@@ -163,7 +158,7 @@ class SBuild(implicit _project: Project) {
         Requirement(plugin = "org.scala-ide.scala.library", version = "2.9.2", versionMatch = "compatible")
       ),
       plugins = Seq(
-        Plugin(id = "de.tototec.sbuild.eclipse.plugin", version = version, file = Path(eclipseJar))
+        Plugin(id = namespace, version = version, file = Path(eclipseJar))
       ),
       featureFileHeader = """   Licensed to the Apache Software Foundation (ASF) under one
    or more contributor license agreements.  See the NOTICE file
@@ -189,11 +184,11 @@ class SBuild(implicit _project: Project) {
 
   Target(scalaLibFeatureXml) dependsOn scalaLibBundle exec { ctx: TargetContext =>
 
-    val scalaLibBundle = ctx.fileDependencies.find { _.getName.contains(scalaLibBundleName) }.get
+    val scalaLibBundle = this.scalaLibBundle.files.head
     val updateSiteUrl = "http://sbuild.tototec.de/svn/eclipse-update-site/stable"
 
     val featureXml = FeatureBuilder.createFeatureXml(
-      id = "de.tototec.sbuild.eclipse.plugin.scala-library.feature",
+      id = s"${namespace}.scala-library.feature",
       version = scalaLibBundleVersion,
       label = "Scala Library for SBuild Eclipse Plugin Feature",
       providerName = "ToToTec GbR",
@@ -260,7 +255,7 @@ SUCH DAMAGE.
 
   Target("phony:update-site") dependsOn featureJar ~ scalaLibFeatureJar ~ eclipseJar ~ scalaLibBundle exec { ctx: TargetContext =>
 
-    val scalaLibBundle = ctx.fileDependencies.find { _.getName.contains(scalaLibBundleName) }.get
+    val scalaLibBundle = this.scalaLibBundle.files.head
 
     AntDelete(dir = Path("target/update-site"))
     AntMkdir(dir = Path("target/update-site/features"))
@@ -270,21 +265,21 @@ SUCH DAMAGE.
     AntCopy(file = Path(eclipseJar), toDir = Path("target/update-site/plugins"))
     AntCopy(file = scalaLibBundle, toDir = Path("target/update-site/plugins"))
 
-    val siteXml = """<?xml version="1.0" encoding="UTF-8"?>
+    val siteXml = s"""<?xml version="1.0" encoding="UTF-8"?>
 <site>
   <description>Update-Site for SBuild Eclipse Plugin.</description>
 
   <feature
-      url="features/de.tototec.sbuild.eclipse.plugin.feature_""" + version + """.jar"
-      id="de.tototec.sbuild.eclipse.plugin.feature"
-      version="""" + version + """">
+      url="features/${namespace}.feature_${version}.jar"
+      id="${namespace}.feature"
+      version="${version}">
     <category name="SBuild"/>
   </feature>
 
   <feature
-      url="features/de.tototec.sbuild.eclipse.plugin.scala-library.feature_""" + scalaLibBundleVersion + """.jar"
-      id="de.tototec.sbuild.eclipse.plugin.scala-library.feature"
-      version="""" + scalaLibBundleVersion + """">
+      url="features/${namespace}.scala-library.feature_${scalaLibBundleVersion}.jar"
+      id="${namespace}.scala-library.feature"
+      version="${scalaLibBundleVersion}">
     <category name="Scala"/>
   </feature>
 
@@ -300,22 +295,14 @@ SUCH DAMAGE.
     AntZip(destFile = ctx.targetFile.get, baseDir = Path("target"), includes = "update-site/**")
   }
 
-  Target("phony:compileTest") dependsOn compilerCp ~ eclipseJar ~ testCp exec { ctx: TargetContext =>
-    IfNotUpToDate(Path("src/test/scala"), Path("target"), ctx) {
-      AntMkdir(dir = Path("target/test-classes"))
-      addons.scala.Scalac(
-        target = "jvm-1.5",
-        encoding = "UTF-8",
-        deprecation = true,
-        unchecked = true,
-        debugInfo = "vars",
-        fork = true,
-        srcDir = Path("src/test/scala"),
-        destDir = Path("target/test-classes"),
-        compilerClasspath = ctx.fileDependencies,
-        classpath = ctx.fileDependencies
-      )
-    }
+  Target("phony:compileTest").cacheable dependsOn compilerCp ~ eclipseJar ~ testCp ~ "scan:src/test/scala" exec {
+    addons.scala.Scalac(
+      deprecation = true, unchecked = true, debugInfo = "vars",
+      sources = "scan:src/test/scala".files,
+      destDir = Path("target/test-classes"),
+      compilerClasspath = compilerCp.files,
+      classpath = testCp.files ++ eclipseJar.files
+    )
   }
 
   Target("phony:test") dependsOn eclipseJar ~ testCp ~ "compileTest" exec { ctx: TargetContext =>

@@ -3,17 +3,12 @@ import de.tototec.sbuild.ant._
 import de.tototec.sbuild.ant.tasks._
 import de.tototec.sbuild.TargetRefs._
 
-@version("0.3.0")
+@version("0.4.0")
 class SBuild(implicit _project: Project) {
 
-  val tClean = Target("phony:clean")
-  val tAll = Target("phony:all")
+  val modules = Modules("de.tototec.sbuild.eclipse.plugin")
 
-  val modules = Seq("de.tototec.sbuild.eclipse.plugin")
-  modules.foreach { module =>
-    Module(module)
-    tClean dependsOn module + "::clean"
-    tAll dependsOn module + "::all"
-  }
+  Target("phony:clean") dependsOn modules.map(_("clean"))
+  Target("phony:all") dependsOn modules.map(_("all"))
 
 }
