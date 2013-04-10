@@ -61,11 +61,13 @@ object WorkspaceProjectAliases {
 class WorkspaceProjectAliases(aliases: Map[String, String], regexAliases: Map[String, String]) {
 
   def getAliasForDependency(dependency: String): Option[String] = {
-    aliases.get(dependency) match {
-      case None => regexAliases.keys.find { key =>
-        dependency.matches(key)
-      } map { regexAliases(_) }
-      case x => x
+    aliases.get(dependency).orElse {
+      // search a regex
+      regexAliases.keys.collectFirst {
+        case key if dependency.matches(key) =>
+          val Regex = key.r
+          Regex.replaceFirstIn(dependency, regexAliases(key))
+      }
     }
   }
 
