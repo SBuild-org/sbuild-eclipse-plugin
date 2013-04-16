@@ -64,16 +64,16 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
   def dependsOnWorkspaceProjects(projectNames: Array[String]) = relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
 
-  //  def this(predecessor: SBuildClasspathContainer) {
-  //    this(predecessor.getPath, predecessor.project)
-  //    this.classpathEntries = predecessor.classpathEntries
-  //    this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
-  //  }
+  def this(predecessor: SBuildClasspathContainer) {
+    this(predecessor.getPath, predecessor.project)
+    this.classpathEntries = predecessor.classpathEntries
+    this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
+  }
 
   def notifyUpdateClasspathEntries(inBackground: Boolean = false) {
     def notify = {
       try {
-        val newContainer = this // new SBuildClasspathContainer(this)
+        val newContainer = new SBuildClasspathContainer(this)
         JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor())
         // next line is the long searched-for magic?
         project.setRawClasspath(project.getRawClasspath(), new NullProgressMonitor())
