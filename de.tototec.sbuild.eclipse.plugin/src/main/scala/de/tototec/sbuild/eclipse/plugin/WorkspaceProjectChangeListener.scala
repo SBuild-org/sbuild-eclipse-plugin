@@ -46,7 +46,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
   }
 
   def projectsOpened(projects: Array[IProject]) {
-    debug("Possibly opened projects: " + projects.map(_.getName).mkString(", "))
+    //    debug("Possibly opened projects: " + projects.map(_.getName).mkString(", "))
     if (!projects.isEmpty) {
 
       val projectNames = projects.map { _.getName }

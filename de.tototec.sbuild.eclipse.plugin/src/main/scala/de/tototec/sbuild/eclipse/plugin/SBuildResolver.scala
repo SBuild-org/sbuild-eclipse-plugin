@@ -25,45 +25,46 @@ class SBuildResolver(sbuildHomeDir: File, projectFile: File) {
     getExportedDependenciesMethod: Method,
     nullProgressMonitorClass: Class[_],
     resolveMethod: Method
-    ) = {
-    debug("Trying to use SBuild installed at: " + sbuildHomeDir)
+    ) =
+    {
+      debug("Trying to use SBuild installed at: " + sbuildHomeDir)
 
-    val sbuildVersionClass = classloader.loadClass("de.tototec.sbuild.SBuildVersion")
-    val versionMethod = sbuildVersionClass.getMethod("version")
-    debug("SBuild version: " + versionMethod.invoke(null))
+      val sbuildVersionClass = classloader.loadClass("de.tototec.sbuild.SBuildVersion")
+      val versionMethod = sbuildVersionClass.getMethod("version")
+      debug("SBuild version: " + versionMethod.invoke(null))
 
-    val sbuildExceptionClass = classloader.loadClass("de.tototec.sbuild.SBuildException")
+      val sbuildExceptionClass = classloader.loadClass("de.tototec.sbuild.SBuildException")
 
-    val sbuildEmbeddedClass = classloader.loadClass("de.tototec.sbuild.embedded.SBuildEmbedded")
-    val progressMonitorClass = classloader.loadClass("de.tototec.sbuild.embedded.ProgressMonitor")
-    val nullProgressMonitorClass = classloader.loadClass("de.tototec.sbuild.embedded.NullProgressMonitor")
-    val embeddedResolverClass = classloader.loadClass("de.tototec.sbuild.embedded.EmbeddedResolver")
+      val sbuildEmbeddedClass = classloader.loadClass("de.tototec.sbuild.embedded.SBuildEmbedded")
+      val progressMonitorClass = classloader.loadClass("de.tototec.sbuild.embedded.ProgressMonitor")
+      val nullProgressMonitorClass = classloader.loadClass("de.tototec.sbuild.embedded.NullProgressMonitor")
+      val embeddedResolverClass = classloader.loadClass("de.tototec.sbuild.embedded.EmbeddedResolver")
 
-    val sbuildEmbeddedClassCtr = sbuildEmbeddedClass.getConstructor(classOf[File])
+      val sbuildEmbeddedClassCtr = sbuildEmbeddedClass.getConstructor(classOf[File])
 
-    val getEmbeddedResolverMethod = sbuildEmbeddedClass.getMethod("loadResolver", classOf[File], classOf[Properties])
+      val getEmbeddedResolverMethod = sbuildEmbeddedClass.getMethod("loadResolver", classOf[File], classOf[Properties])
 
-    val getExportedDependenciesMethod = embeddedResolverClass.getMethod("exportedDependencies", classOf[String])
+      val getExportedDependenciesMethod = embeddedResolverClass.getMethod("exportedDependencies", classOf[String])
 
-    val resolveMethod = embeddedResolverClass.getMethod("resolve", classOf[String], progressMonitorClass)
+      val resolveMethod = embeddedResolverClass.getMethod("resolve", classOf[String], progressMonitorClass)
 
-    (
-      sbuildEmbeddedClassCtr,
-      sbuildExceptionClass,
-      getEmbeddedResolverMethod,
-      getExportedDependenciesMethod,
-      nullProgressMonitorClass,
-      resolveMethod
-    )
-  }
+      (
+        sbuildEmbeddedClassCtr,
+        sbuildExceptionClass,
+        getEmbeddedResolverMethod,
+        getExportedDependenciesMethod,
+        nullProgressMonitorClass,
+        resolveMethod
+      )
+    }
 
   protected val sbuildEmbededed: Any = sbuildEmbeddedClassCtr.newInstance(sbuildHomeDir)
 
-  private[this] var _resolver: Any = _
-  protected def resolver: Any = {
-    if (_resolver == null)
-      _resolver = getEmbeddedResolverMethod.invoke(sbuildEmbededed, projectFile, new Properties())
-    _resolver
+  private[this] var _resolver: Option[Any] = None
+  protected def resolver: Any = _resolver.getOrElse {
+    val newResolver = getEmbeddedResolverMethod.invoke(sbuildEmbededed, projectFile, new Properties())
+    _resolver = Some(newResolver)
+    newResolver
   }
 
   def exportedDependencies(exportName: String): Seq[String] = try {

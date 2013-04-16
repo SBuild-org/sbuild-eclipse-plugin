@@ -64,11 +64,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
   def dependsOnWorkspaceProjects(projectNames: Array[String]) = relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
 
-//  def this(predecessor: SBuildClasspathContainer) {
-//    this(predecessor.getPath, predecessor.project)
-//    this.classpathEntries = predecessor.classpathEntries
-//    this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
-//  }
+  //  def this(predecessor: SBuildClasspathContainer) {
+  //    this(predecessor.getPath, predecessor.project)
+  //    this.classpathEntries = predecessor.classpathEntries
+  //    this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
+  //  }
 
   def notifyUpdateClasspathEntries(inBackground: Boolean = false) {
     def notify = {
@@ -185,10 +185,10 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
   override def getClasspathEntries: Array[IClasspathEntry] = {
     this.classpathEntries match {
+      case Some(entries) => entries
       case None =>
         updateClasspathEntries
         Array()
-      case Some(entries) => entries
     }
   }
 
