@@ -19,16 +19,16 @@ class SBuild(implicit _project: Project) {
   val featureJar = s"target/${namespace}.feature_${version}.jar"
 
   val scalaLibBundleId = "org.scala-ide.scala.library"
-  val scalaLibBundleVersion = "2.10.0.v20121205-112020-18481cef9b"
+  val scalaLibBundleVersion = "2.10.1.v20130302-092018-VFINAL-33e32179fd"
   val scalaLibBundleName = s"${scalaLibBundleId}_${scalaLibBundleVersion}.jar"
-  val scalaLibBundle = s"http://download.scala-ide.org/nightly-update-juno-master-2.10.x/plugins/${scalaLibBundleName}"
+  val scalaLibBundle = s"http://download.scala-ide.org/sdk/e37/scala210/stable/site/plugins/${scalaLibBundleName}"
 
   val scalaLibFeatureXml = "target/scala-feature/feature.xml"
   val scalaLibFeatureJar = s"target/${namespace}.scala-library.feature_${scalaLibBundleVersion}.jar"
 
   val updateSiteZip = s"target/sbuild-eclipse-plugin-update-site-${version}.zip"
 
-  val scalaVersion = "2.10.0"
+  val scalaVersion = "2.10.1"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
@@ -82,7 +82,7 @@ class SBuild(implicit _project: Project) {
     val output = "target/classes"
 
     addons.scala.Scalac(
-      deprecation = true, unchecked = true, debugInfo = "vars",
+      deprecation = true, unchecked = true, debugInfo = "vars", target = "jvm-1.6",
       sources = "scan:src/main/scala".files,
       destDir = Path(output),
       compilerClasspath = compilerCp.files,
@@ -103,7 +103,7 @@ class SBuild(implicit _project: Project) {
         "Bundle-Activator" -> s"${namespace}.internal.SBuildClasspathActivator",
         "Bundle-ActivationPolicy" -> "lazy",
         "Implementation-Version" -> "${Bundle-Version}",
-        "Private-Package" -> s"""${namespace}, 
+        "Private-Package" -> s"""${namespace},
                                  ${namespace}.internal""",
         "Import-Package" -> """!de.tototec.sbuild.*,
                                !de.tototec.cmdoption.*,
@@ -122,7 +122,7 @@ class SBuild(implicit _project: Project) {
   Target(featureProperties) exec { ctx: TargetContext =>
     // Eclipse Update assume the first line as title, so remove trailing empty lines
     val license = io.Source.fromFile(Path("LICENSE.txt")).getLines.dropWhile(l => l.trim.isEmpty)
-    
+
     val props = new java.util.Properties()
     props.put("description", "Eclipse Integration for SBuild Buildsystem.")
     props.put("license", license.mkString("\n"))
