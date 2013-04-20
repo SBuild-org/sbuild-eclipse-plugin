@@ -26,7 +26,7 @@ class SBuild(implicit _project: Project) {
   val scalaLibFeatureXml = "target/scala-feature/feature.xml"
   val scalaLibFeatureJar = s"target/${namespace}.scala-library.feature_${scalaLibBundleVersion}.jar"
 
-  val updateSiteZip = s"target/sbuild-eclipse-plugin-update-site-${version}.zip"
+  val updateSiteZip = s"target/§{namespace}-${version}.zip"
 
   val scalaVersion = "2.10.1"
 
