@@ -10,8 +10,8 @@ class SBuild(implicit _project: Project) {
 
   val namespace = "de.tototec.sbuild.eclipse.plugin"
 
-  val version = "0.3.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
-  // val version = "0.3.0"
+  // val version = "0.3.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
+  val version = "0.4.0"
   val eclipseJar = s"target/${namespace}_${version}.jar"
 
   val featureXml = "target/feature/feature.xml"
@@ -26,7 +26,7 @@ class SBuild(implicit _project: Project) {
   val scalaLibFeatureXml = "target/scala-feature/feature.xml"
   val scalaLibFeatureJar = s"target/${namespace}.scala-library.feature_${scalaLibBundleVersion}.jar"
 
-  val updateSiteZip = s"target/§{namespace}-${version}.zip"
+  val updateSiteZip = s"target/${namespace}-${version}.zip"
 
   val scalaVersion = "2.10.1"
 
