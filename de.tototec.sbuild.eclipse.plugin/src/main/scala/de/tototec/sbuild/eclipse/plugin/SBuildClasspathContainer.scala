@@ -71,12 +71,12 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   }
 
   def notifyUpdateClasspathEntries(inBackground: Boolean = false) {
-    def notify = {
+    def notify: Unit = {
       try {
         val newContainer = new SBuildClasspathContainer(this)
-        JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor())
+        JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor() with DebugProgressMonitor)
         // next line is the long searched-for magic?
-        project.setRawClasspath(project.getRawClasspath(), new NullProgressMonitor())
+        project.setRawClasspath(project.getRawClasspath(), new NullProgressMonitor() with DebugProgressMonitor)
       } catch {
         case e: Throwable => error("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
       }
@@ -102,7 +102,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
     if (sbuildHomePath == null) {
-      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined")
+      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
     }
     val sbuildHomeDir = sbuildHomePath.toFile
     val projectFile = new File(projectRootFile, settings.sbuildFile).getAbsoluteFile
@@ -114,7 +114,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     // TODO: Old up-to-date check logic was incomplete. Removed it completely for now
 
-    debug("Reading project and resolve action definitions")
+    debug("Reading project and resolve action definitions.")
 
     val deps = resolver.exportedDependencies(settings.exportedClasspath)
     debug("Exported dependencies: " + deps.mkString(","))
@@ -163,33 +163,39 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   def updateClasspathEntries: Unit = try {
     val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
 
-    val firstRun = this.classpathEntries.isEmpty
-    val classpathEntriesChanged = !firstRun
+    val classpathEntriesAboutToChange = this.classpathEntries.isDefined
+
+    debug("About to replace classpath entries: " + this.classpathEntries.toSeq + "\n  with new classpath entries: " + newClasspathEntries)
 
     this.classpathEntries = Some(newClasspathEntries.toArray)
     this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
 
-    if (classpathEntriesChanged) {
-      debug("Classpath changed for " + project + ". Notify in background.")
+    if (classpathEntriesAboutToChange) {
+      debug("Classpath changed for: " + project.getProject().getName() + ". Notifying...")
       notifyUpdateClasspathEntries(inBackground = true)
     } else {
-      debug("Classpath evaluated for the first time or it did not change for " + project)
+      debug("Classpath evaluated for the first time or it did not change for " + project.getProject().getName())
     }
-
-    // this.classpathEntries.get
 
   } catch {
     case e: Throwable =>
-      error("Could not calculate classpath entries for project " + project.getProject.getName, e)
+      error("Could not calculate classpath entries for project " + project.getProject().getName(), e)
   }
 
   override def getClasspathEntries: Array[IClasspathEntry] = {
-    this.classpathEntries match {
-      case Some(entries) => entries
-      case None =>
-        updateClasspathEntries
-        Array()
+
+    if (this.classpathEntries.isEmpty) try {
+      // first run, no background etc.
+      debug("Evaluating classpath for the first time for project: " + project.getProject().getName())
+      val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
+      this.classpathEntries = Some(newClasspathEntries.toArray)
+      this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
+    } catch {
+      case e: Throwable =>
+        error("Could not calculate classpath entries for project " + project.getProject().getName(), e)
     }
+
+    this.classpathEntries.getOrElse(Array())
   }
 
 }

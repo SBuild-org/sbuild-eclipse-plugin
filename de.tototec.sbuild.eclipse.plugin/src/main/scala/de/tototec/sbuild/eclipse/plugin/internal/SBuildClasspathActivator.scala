@@ -1,20 +1,22 @@
 package de.tototec.sbuild.eclipse.plugin.internal
 
-import org.osgi.framework.BundleActivator
-import org.osgi.framework.BundleContext
-import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.resources.IWorkspace
-import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
-import org.eclipse.core.internal.runtime.InternalPlatform
+import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.ILog
 import org.eclipse.core.runtime.Platform
-import org.eclipse.core.runtime.IStatus
 import org.eclipse.core.runtime.Status
+import org.osgi.framework.BundleActivator
+import org.osgi.framework.BundleContext
+
+import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
 
 object SBuildClasspathActivator {
-  private var _activator: SBuildClasspathActivator = _
-  def activator = _activator
-  def activator_=(activator: SBuildClasspathActivator) = _activator = activator
+  private[this] var _activator: Option[SBuildClasspathActivator] = None
+  def activator = _activator.getOrElse {
+    throw new IllegalStateException("SBuild Eclipse Plugin not activated.");
+  }
+  private def activator_=(activator: SBuildClasspathActivator) = _activator = Option(activator)
+
 }
 
 class SBuildClasspathActivator extends BundleActivator {

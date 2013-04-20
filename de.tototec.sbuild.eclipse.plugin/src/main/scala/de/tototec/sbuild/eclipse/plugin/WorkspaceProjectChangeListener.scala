@@ -20,10 +20,10 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
         event.getDelta match {
           case null =>
           case projDelta =>
-            val openedProjs = getProjects(projDelta.getAffectedChildren(IResourceDelta.OPEN | IResourceDelta.CHANGED | IResourceDelta.ADDED).
-              filterNot(d => (d.getFlags() & IResourceDelta.OPEN) == 0).
-              map { _.getResource })
-            projectsOpened(openedProjs)
+            val interestingFlags = IResourceDelta.OPEN | IResourceDelta.CHANGED | IResourceDelta.ADDED
+            val openedProjs = getProjects(projDelta.getAffectedChildren(interestingFlags).
+              collect { case d if (d.getFlags() & IResourceDelta.OPEN) != 0 => d.getResource() })
+            projectsOpenedOrClosed(openedProjs)
         }
 
       case _ => // other cases are not interesting
@@ -31,7 +31,8 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
   }
 
   def getProjects(resources: Array[IResource]): Array[IProject] =
-    resources.map { r => getProject(r) }.filter(_.isDefined).map(_.get).distinct
+    //    resources.map { r => getProject(r) }.filter(_.isDefined).map(_.get).distinct
+    resources.map { r => getProject(r) }.collect { case Some(x) => x }.distinct
 
   def getProject(resource: IResource): Option[IProject] = {
     resource.getType match {
@@ -40,12 +41,12 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
     }
   }
 
-  def projectClosed(project: IProject) {
-    info("Closed project: " + project.getName)
-    // TODO: find affected projects and refresh classpath
-  }
+  //  def projectClosed(project: IProject) {
+  //    info("Closed project: " + project.getName)
+  //    // TODO: find affected projects and refresh classpath
+  //  }
 
-  def projectsOpened(projects: Array[IProject]) {
+  def projectsOpenedOrClosed(projects: Array[IProject]) {
     //    debug("Possibly opened projects: " + projects.map(_.getName).mkString(", "))
     if (!projects.isEmpty) {
 
@@ -56,12 +57,13 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
       val sbuildContainers = SBuildClasspathContainer.getSBuildClasspathContainers(openJavaProjects)
-      sbuildContainers.foreach { c =>
-        if (c.dependsOnWorkspaceProjects(projectNames)) {
+      sbuildContainers.foreach {
+        case c if c.dependsOnWorkspaceProjects(projectNames) =>
           info("Trigger update SBuild Libraries of project: " + c.project.getProject.getName)
           // trigger a recalculation
           c.updateClasspathEntries
-        }
+        case c => 
+          debug("Not trigger update SBuild Libraries of unrelated project: " + c.project.getProject.getName)
       }
 
     }
