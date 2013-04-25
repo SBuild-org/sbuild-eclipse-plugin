@@ -10,8 +10,8 @@ class SBuild(implicit _project: Project) {
 
   val namespace = "de.tototec.sbuild.eclipse.plugin"
 
-  // val version = "0.3.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
-  val version = "0.4.0"
+  val version = "0.4.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
+  // val version = "0.4.0"
   val eclipseJar = s"target/${namespace}_${version}.jar"
 
   val featureXml = "target/feature/feature.xml"
@@ -53,6 +53,7 @@ class SBuild(implicit _project: Project) {
       "mvn:org.eclipse.equinox:common:3.3.0-v20070426" ~
       "mvn:org.eclipse.core:contenttype:3.2.100-v20070319" ~
       "mvn:org.eclipse:jface:3.3.0-I20070606-0010" ~
+      "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100" ~
       s"zip:file=eclipse/plugins/org.eclipse.jface_3.4.0.I20080606-1300.jar;archive=$eclipse34zip" ~
       "mvn:org.eclipse:swt:3.3.0-v3346" ~
       "mvn:org.eclipse.jdt:core:3.3.0-v_771" ~
