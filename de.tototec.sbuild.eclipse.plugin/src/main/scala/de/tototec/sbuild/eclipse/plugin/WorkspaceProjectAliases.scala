@@ -28,7 +28,7 @@ object WorkspaceProjectAliases {
             Map()
           case prefs =>
             val keys = prefs.keys
-            debug("Found aliases in prefs for the following dependencies: " + keys.mkString(", "))
+            debug("Found aliases (" + node + ") in prefs for the following dependencies: " + keys.mkString(", "))
             keys.map {
               name => (name -> prefs.get(name, ""))
             }.filter {
