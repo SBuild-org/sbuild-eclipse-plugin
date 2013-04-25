@@ -8,14 +8,14 @@ import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.JavaModelException
 import org.eclipse.core.runtime.NullProgressMonitor
 
-object RefreshContainerRule extends ISchedulingRule {
-  private[this] def sameRule(rule: ISchedulingRule) =
-    // we compare class names instead of instances, to ensure even different classloader
-    this.getClass().getName() == rule.getClass().getName()
-
-  override def contains(rule: ISchedulingRule): Boolean = sameRule(rule)
-  override def isConflicting(rule: ISchedulingRule): Boolean = sameRule(rule)
-}
+//object RefreshContainerRule extends ISchedulingRule {
+//  private[this] def sameRule(rule: ISchedulingRule) =
+//    // we compare class names instead of instances, to ensure even different classloader
+//    this.getClass().getName() == rule.getClass().getName()
+//
+//  override def contains(rule: ISchedulingRule): Boolean = sameRule(rule)
+//  override def isConflicting(rule: ISchedulingRule): Boolean = sameRule(rule)
+//}
 
 class RefreshContainerJob(container: SBuildClasspathContainer, isUser: Boolean) extends Job("Refresh SBuild Libraries") {
   setUser(isUser)
