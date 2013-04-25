@@ -17,6 +17,8 @@ import org.eclipse.core.runtime.NullProgressMonitor
 import org.eclipse.jdt.core.JavaModelException
 import scala.util.Failure
 import scala.util.Success
+import org.eclipse.core.resources.IResource
+import org.eclipse.core.runtime.IProgressMonitor
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
@@ -50,6 +52,129 @@ object SBuildClasspathContainer {
  *
  */
 class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends IClasspathContainer {
+  debug("Creating new classpath container instance: " + this)
+
+  override val getKind = IClasspathContainer.K_APPLICATION
+  override val getDescription = "SBuild Libraries"
+  override val getPath = path
+
+  protected def projectRootFile: File = project.getProject.getLocation.makeAbsolute.toFile
+
+  def this(predecessor: SBuildClasspathContainer) {
+    this(predecessor.getPath, predecessor.project)
+  }
+
+  protected var classpathEntries: Option[Array[IClasspathEntry]] = None
+  protected var relatedWorkspaceProjectNames: Set[String] = Set()
+
+  def dependsOnWorkspaceProjects(projectNames: Array[String]) =
+    relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
+
+  protected val settings: Settings = new Settings(path)
+
+  override def getClasspathEntries: Array[IClasspathEntry] =
+    classpathEntries match {
+      case Some(x) => x
+      case None => try {
+        // first run, no background etc.
+        debug("Evaluating classpath for the first time for project: " + project.getProject().getName())
+        val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
+        val classpathEntriesArray = newClasspathEntries.toArray
+        this.classpathEntries = Some(classpathEntriesArray)
+        this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
+        classpathEntriesArray
+      } catch {
+        case e: Throwable =>
+          error("Could not calculate classpath entries for project " + project.getProject().getName(), e)
+          Array()
+      }
+    }
+
+  /**
+   * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
+   */
+  def calcClasspath: (Seq[IClasspathEntry], Set[String]) = {
+    // TODO: do the heavy work in background (or Job)
+
+    // read the project
+
+    val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
+    if (sbuildHomePath == null) {
+      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
+    }
+    val sbuildHomeDir = sbuildHomePath.toFile
+    val projectFile = new File(projectRootFile, settings.sbuildFile).getAbsoluteFile
+
+    info("Reading project: " + project.getProject.getName)
+    val resolver = new SBuildResolver(sbuildHomeDir, projectFile)
+
+    //    val reader = SBuildClasspathProjectReader.load(sbuildHomeDir, settings, projectRootFile)
+
+    // TODO: Old up-to-date check logic was incomplete. Removed it completely for now
+
+    debug("Reading project and resolve action definitions.")
+
+    val deps = resolver.exportedDependencies(settings.exportedClasspath)
+    debug("Exported dependencies: " + deps.mkString(","))
+
+    val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
+
+    val aliases = WorkspaceProjectAliases(project)
+    debug("Using workspaceProjectAliases: " + aliases)
+
+    /** Resolve through embedded SBuild. Slurping all SBuild errors, but logging them. */
+    def resolveViaSBuild(dep: String): Seq[IClasspathEntry] =
+      resolver.resolve(dep, new NullProgressMonitor()) match {
+        case Failure(e) =>
+          debug(s"""Could not resolve dependency "${dep}" of project: ${project.getProject.getName}.""", e)
+          Seq()
+        case Success(files) =>
+          debug(s"""Resolved dependency "${dep}" to "${files.mkString(", ")}" for project ${project.getProject.getName}.""")
+          files.map { file =>
+            // IDEA: refresh the resource
+            //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
+            //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
+            //            }
+            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath), null /*sourcepath*/ , null)
+          }
+      }
+
+    var relatedWorkspaceProjectNames: Set[String] = Set()
+
+    // We will now check, if some of these targets can be resolved from workspace.
+    // - If so, we instead add an classpath entry with the existing and open workspace project
+    // - Else, we resolve the depenency and add the result to the classpath
+    val classpathEntries =
+      deps.flatMap { dep =>
+        aliases.getAliasForDependency(dep) match {
+          case None => resolveViaSBuild(dep)
+          case Some(alias) =>
+            relatedWorkspaceProjectNames += alias
+            javaModel.getJavaProject(alias) match {
+              case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
+                debug("Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
+                Seq(JavaCore.newProjectEntry(javaProject.getPath))
+              case _ => resolveViaSBuild(dep)
+            }
+        }
+      }
+
+    (classpathEntries.distinct, relatedWorkspaceProjectNames)
+  }
+
+  def updateClasspath(monitor: IProgressMonitor): Unit = try {
+    //    classpathEntries = None
+    val newContainer = new SBuildClasspathContainer(this)
+    monitor.subTask("Updating SBuild library container")
+    debug("Updating classpath (by re-setting classpath container)")
+    JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), monitor)
+  } finally {
+    monitor.done()
+  }
+
+}
+
+class SBuildClasspathContainer2(path: IPath, val project: IJavaProject) extends IClasspathContainer {
 
   override val getKind = IClasspathContainer.K_APPLICATION
   override val getDescription = "SBuild Libraries"
@@ -64,7 +189,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
   def dependsOnWorkspaceProjects(projectNames: Array[String]) = relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
 
-  def this(predecessor: SBuildClasspathContainer) {
+  def this(predecessor: SBuildClasspathContainer2) {
     this(predecessor.getPath, predecessor.project)
     this.classpathEntries = predecessor.classpathEntries
     this.relatedWorkspaceProjectNames = predecessor.relatedWorkspaceProjectNames
@@ -73,10 +198,10 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   def notifyUpdateClasspathEntries(inBackground: Boolean = false) {
     def notify: Unit = {
       try {
-        val newContainer = new SBuildClasspathContainer(this)
+        val newContainer = new SBuildClasspathContainer2(this)
         JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), new NullProgressMonitor() with DebugProgressMonitor)
-        // next line is the long searched-for magic?
-        project.setRawClasspath(project.getRawClasspath(), new NullProgressMonitor() with DebugProgressMonitor)
+        // next line is the long searched-for magic? Unfortunately not, but we keep it for now.
+        project.setRawClasspath(project.readRawClasspath(), new NullProgressMonitor() with DebugProgressMonitor)
       } catch {
         case e: Throwable => error("Caught exception while updating the SBuildClasspathContainer for project: " + project, e)
       }
@@ -133,6 +258,10 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         case Success(files) =>
           debug(s"""Resolved dependency "${dep}" to "${files.mkString(", ")}" for project ${project.getProject.getName}.""")
           files.map { file =>
+            // IDEA: refresh the resource
+            //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
+            //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
+            //            }
             JavaCore.newLibraryEntry(new Path(file.getAbsolutePath), null /*sourcepath*/ , null)
           }
       }
@@ -165,7 +294,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     val classpathEntriesAboutToChange = this.classpathEntries.isDefined
 
-    debug("About to replace classpath entries: " + this.classpathEntries.toSeq + "\n  with new classpath entries: " + newClasspathEntries)
+    debug("About to replace classpath entries: " + this.classpathEntries.map(_.toSeq) + "\n  with new classpath entries: " + newClasspathEntries)
 
     this.classpathEntries = Some(newClasspathEntries.toArray)
     this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
@@ -182,20 +311,21 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       error("Could not calculate classpath entries for project " + project.getProject().getName(), e)
   }
 
-  override def getClasspathEntries: Array[IClasspathEntry] = {
-
-    if (this.classpathEntries.isEmpty) try {
+  override def getClasspathEntries: Array[IClasspathEntry] = classpathEntries match {
+    case Some(x) => x
+    case None => try {
       // first run, no background etc.
       debug("Evaluating classpath for the first time for project: " + project.getProject().getName())
       val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
-      this.classpathEntries = Some(newClasspathEntries.toArray)
+      val classpathEntriesArray = newClasspathEntries.toArray
+      this.classpathEntries = Some(classpathEntriesArray)
       this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
+      classpathEntriesArray
     } catch {
       case e: Throwable =>
         error("Could not calculate classpath entries for project " + project.getProject().getName(), e)
+        Array()
     }
-
-    this.classpathEntries.getOrElse(Array())
   }
 
 }

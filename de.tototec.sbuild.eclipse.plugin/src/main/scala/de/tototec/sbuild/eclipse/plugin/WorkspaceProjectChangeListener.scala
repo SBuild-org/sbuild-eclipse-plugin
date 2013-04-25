@@ -7,10 +7,19 @@ import org.eclipse.core.resources.IProject
 import org.eclipse.core.resources.IResourceDelta
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.jdt.core.JavaCore
+import org.eclipse.core.resources.IWorkspaceRunnable
+import org.eclipse.core.runtime.IProgressMonitor
+import org.eclipse.core.runtime.NullProgressMonitor
+import scala.parallel.Future
+import org.eclipse.core.runtime.jobs.Job
+import org.eclipse.core.runtime.Status
+import org.eclipse.core.runtime.IStatus
+import org.eclipse.core.runtime.CoreException
+import org.eclipse.ui.statushandlers.StatusManager;
 
 class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
-  override def resourceChanged(event: IResourceChangeEvent) {
+  override def resourceChanged(event: IResourceChangeEvent): Unit = try {
     event.getType match {
       //      case IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.PRE_DELETE =>
       //        val project = getProject(event.getResource)
@@ -20,14 +29,29 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
         event.getDelta match {
           case null =>
           case projDelta =>
+
+            // detect changes to build files
+
+            //            projDelta.
+
+            // search for opened/closed projects
+
             val interestingFlags = IResourceDelta.OPEN | IResourceDelta.CHANGED | IResourceDelta.ADDED
             val openedProjs = getProjects(projDelta.getAffectedChildren(interestingFlags).
               collect { case d if (d.getFlags() & IResourceDelta.OPEN) != 0 => d.getResource() })
-            projectsOpenedOrClosed(openedProjs)
+
+            val projectsToUpdate = affectedProjects(openedProjs)
+            projectsToUpdate.foreach { c =>
+              val job = new RefreshContainerJob(container = c, isUser = true)
+              job.schedule()
+            }
         }
 
       case _ => // other cases are not interesting
     }
+  } catch {
+    case e: CoreException =>
+      StatusManager.getManager().handle(e.getStatus())
   }
 
   def getProjects(resources: Array[IResource]): Array[IProject] =
@@ -46,9 +70,10 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
   //    // TODO: find affected projects and refresh classpath
   //  }
 
-  def projectsOpenedOrClosed(projects: Array[IProject]) {
+  def affectedProjects(projects: Array[IProject]): Array[SBuildClasspathContainer] = {
     //    debug("Possibly opened projects: " + projects.map(_.getName).mkString(", "))
-    if (!projects.isEmpty) {
+    if (projects.isEmpty) Array()
+    else {
 
       val projectNames = projects.map { _.getName }
 
@@ -57,15 +82,19 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
       val sbuildContainers = SBuildClasspathContainer.getSBuildClasspathContainers(openJavaProjects)
-      sbuildContainers.foreach {
-        case c if c.dependsOnWorkspaceProjects(projectNames) =>
-          info("Trigger update SBuild Libraries of project: " + c.project.getProject.getName)
-          // trigger a recalculation
-          c.updateClasspathEntries
-        case c => 
-          debug("Not trigger update SBuild Libraries of unrelated project: " + c.project.getProject.getName)
-      }
+      val (projectsToUpdate, projectToIgnore) = sbuildContainers.partition { _.dependsOnWorkspaceProjects(projectNames) }
 
+      //      if (!projectToIgnore.isEmpty)
+      //        debug("Not updating unrelated SBuild projects: " + projectToIgnore.map { _.project.getProject().getName() }.toSeq)
+
+      if (!projectsToUpdate.isEmpty)
+        debug("Updating SBuild Libraries in projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
+
+      // TODO: potentially do this as atomic operation and in background?
+      //      val job = new RefreshContainerJob(container = projectsToUpdate, isUser = true)
+      //      //        c.updateClasspathEntries
+      //      job.schedule()
+      projectsToUpdate
     }
   }
 
