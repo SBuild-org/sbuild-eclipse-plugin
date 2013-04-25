@@ -7,8 +7,10 @@ import org.eclipse.core.runtime.Platform
 import org.eclipse.core.runtime.Status
 import org.osgi.framework.BundleActivator
 import org.osgi.framework.BundleContext
-
 import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
+import java.net.URLClassLoader
+import de.tototec.sbuild.eclipse.plugin.Classpathes
+import java.io.File
 
 object SBuildClasspathActivator {
   private[this] var _activator: Option[SBuildClasspathActivator] = None
@@ -16,7 +18,6 @@ object SBuildClasspathActivator {
     throw new IllegalStateException("SBuild Eclipse Plugin not activated.");
   }
   private def activator_=(activator: SBuildClasspathActivator) = _activator = Option(activator)
-
 }
 
 class SBuildClasspathActivator extends BundleActivator {
@@ -62,4 +63,28 @@ class SBuildClasspathActivator extends BundleActivator {
   def log(status: Int, msg: String, cause: Throwable = null) {
     log.log(new Status(status, bundleContext.getBundle.getSymbolicName, msg, cause))
   }
+
+  private[this] var sbuildClassLoader: Option[(File, URLClassLoader)] = None
+
+  def sbuildEmbeddedClassLoader(sbuildHomeDir: File): ClassLoader = {
+    sbuildClassLoader match {
+      case Some((homeDir, classLoader)) if homeDir.equals(sbuildHomeDir) =>
+        de.tototec.sbuild.eclipse.plugin.debug("Using cached SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
+        classLoader
+
+      case _ =>
+        sbuildClassLoader.map { x =>
+          de.tototec.sbuild.eclipse.plugin.debug("Dropping cached classloader for SBuild Embedded: " + x._2.getURLs().toSeq)
+        }
+
+        val classpath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
+        val classLoader = new URLClassLoader(classpath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
+        sbuildClassLoader = Some((sbuildHomeDir, classLoader))
+        de.tototec.sbuild.eclipse.plugin.debug("Created and cached new SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
+
+        classLoader
+    }
+
+  }
+
 }

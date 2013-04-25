@@ -11,12 +11,11 @@ import de.tototec.sbuild.SBuildException
 import scala.util.Failure
 import java.util.Properties
 import java.lang.reflect.Method
+import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 
 class SBuildResolver(sbuildHomeDir: File, projectFile: File) {
 
-  private val classpath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
-
-  private val classloader = new URLClassLoader(classpath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
+  private val classloader = SBuildClasspathActivator.activator.sbuildEmbeddedClassLoader(sbuildHomeDir)
 
   private[this] val (
     sbuildEmbeddedClassCtr: Constructor[_],
