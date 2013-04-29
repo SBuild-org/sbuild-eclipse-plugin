@@ -10,9 +10,12 @@ class SBuild(implicit _project: Project) {
 
   val namespace = "de.tototec.sbuild.eclipse.plugin"
 
-  val version = "0.4.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
-  // val version = "0.4.0"
+  // val version = "0.4.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
+  val version = "0.4.1"
   val eclipseJar = s"target/${namespace}_${version}.jar"
+
+  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
+  // val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
 
   val featureXml = "target/feature/feature.xml"
   val featureProperties = "target/feature/feature.properties"
@@ -31,9 +34,6 @@ class SBuild(implicit _project: Project) {
   val scalaVersion = "2.10.1"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
-
-  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
-  // val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
 
   val bndCp = "mvn:biz.aQute:bndlib:1.50.0"
 

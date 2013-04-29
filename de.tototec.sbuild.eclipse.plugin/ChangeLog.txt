@@ -1,3 +1,11 @@
+SBuild Eclipse Plugin 0.4.1 - 2013-04-29:
+
+* Fixed issues with classpath container refreshes. Now, classpath changes are
+  properly propagated to the Eclipse workspace.
+* SBuild JARs are only loaded one and the classloader is shared, which will
+  reduce memory consumption and improve speed (class loading and JIT compiler
+  effects).
+
 SBuild Eclipse Plugin 0.4.0 - 2013-04-20
 
 * Minimal requires SBuild version is now SBuild 0.4.0.
