@@ -130,7 +130,10 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
           Seq()
         case Success(files) =>
           debug(s"""Resolved dependency "${dep}" to "${files.mkString(", ")}" for project ${project.getProject.getName}.""")
+          
           var singleSource: Option[File] = None
+          var singleJavadoc: Option[File] = None
+          
           if (settings.resolveSources) {
             if (files.size == 1) {
               // resolve sources via "source" scheme handler
@@ -146,6 +149,23 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               }
             } else debug(s"""Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
           }
+          
+          if (settings.resolveJavadoc) {
+            if (files.size == 1) {
+              // resolve javadoc via "javadoc" scheme handler
+              resolver.resolve("javadoc:" + dep, new NullProgressMonitor()) match {
+                case Success(javadoc) =>
+                  debug(s"""Successfully resolved javadoc for dep "${dep}"""")
+                  if (javadoc.size == 1) {
+                    debug(s"""Attaching javadoc for dep "${dep}": ${javadoc.mkString(", ")}""")
+                    singleSource = Some(javadoc.head)
+                  } else debug(s"""Avoit attaching of resolved javadoc for dep "${dep}" as they are not exactly one file.""")
+                case Failure(e) =>
+                  debug(s"""Could not resolve javadoc for dep "${dep}" of project: ${project.getProject.getName}.""", e)
+              }
+            } else debug(s"""Skip resolve of javadoc for "${dep}" as they does not resolved to exactly one file.""")
+          }
+          
           files.map { file =>
             // IDEA: refresh the resource
             //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
@@ -155,8 +175,12 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               case Some(file) => new Path(file.getAbsolutePath())
               case _ => null
             }
+            val javadocPath = singleJavadoc match {
+              case Some(file) => new Path(file.getAbsolutePath())
+              case _ => null
+            }
 
-            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, null)
+            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, javadocPath)
           }
       }
 

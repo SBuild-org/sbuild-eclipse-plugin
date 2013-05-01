@@ -1,3 +1,7 @@
+SBuild Eclipse Plugin trunk:
+
+* Support for resolving/downloading sources and javadoc.
+
 SBuild Eclipse Plugin 0.4.1 - 2013-04-29:
 
 * Fixed issues with classpath container refreshes. Now, classpath changes are
