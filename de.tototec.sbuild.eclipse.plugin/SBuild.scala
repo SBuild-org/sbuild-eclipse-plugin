@@ -10,8 +10,8 @@ class SBuild(implicit _project: Project) {
 
   val namespace = "de.tototec.sbuild.eclipse.plugin"
 
-  // val version = "0.4.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
-  val version = "0.4.1"
+  val version = "0.4.1.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
+  // val version = "0.4.1"
   val eclipseJar = s"target/${namespace}_${version}.jar"
 
   val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
