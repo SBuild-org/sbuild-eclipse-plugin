@@ -28,6 +28,14 @@ class PageComposite(parent: Composite, style: Int) extends Composite(parent, sty
   val updateDependenciesButton = new Button(this, SWT.CHECK)
   updateDependenciesButton.setText("Resolve/download only missing dependencies")
 
+  new Label(this, SWT.NONE).setText("Resolve sources")
+  val resolveSourcesButton = new Button(this, SWT.CHECK)
+  resolveSourcesButton.setText("Resolve/download sources")
+  
+  new Label(this, SWT.NONE).setText("Resolve JavaDoc")
+  val resolveJavadocButton = new Button(this, SWT.CHECK)
+  resolveJavadocButton.setText("Resolve/download JavaDoc")
+  
   private val aliasGroup = new Group(this, SWT.NONE)
   aliasGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1))
   aliasGroup.setLayout(new GridLayout(2, false))

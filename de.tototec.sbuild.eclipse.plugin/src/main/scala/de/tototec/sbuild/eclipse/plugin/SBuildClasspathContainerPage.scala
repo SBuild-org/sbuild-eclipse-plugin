@@ -16,7 +16,6 @@ import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.widgets.Text
 import org.eclipse.swt.events.ModifyListener
 import org.eclipse.swt.events.ModifyEvent
-import org.eclipse.swt.events.SelectionListener
 import org.eclipse.jface.viewers.TableViewerColumn
 import org.eclipse.jface.viewers.TableViewer
 import org.eclipse.jface.viewers.ColumnLabelProvider
@@ -94,11 +93,23 @@ class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with I
 
     val updateDependenciesButton = composite.updateDependenciesButton
     updateDependenciesButton.setSelection(settings.relaxedFetchOfDependencies)
-    updateDependenciesButton.addSelectionListener(new SelectionListener() {
+    updateDependenciesButton.addSelectionListener(new SelectionAdapter() {
       override def widgetSelected(event: SelectionEvent) =
-        settings.relaxedFetchOfDependencies = updateDependenciesButton.getSelection
-      override def widgetDefaultSelected(event: SelectionEvent) =
-        settings.relaxedFetchOfDependencies = updateDependenciesButton.getSelection
+        settings.relaxedFetchOfDependencies = updateDependenciesButton.getSelection()
+    })
+
+    val resolveSourcesButton = composite.resolveSourcesButton
+    resolveSourcesButton.setSelection(settings.resolveSources)
+    resolveSourcesButton.addSelectionListener(new SelectionAdapter() {
+      override def widgetSelected(event: SelectionEvent) =
+        settings.resolveSources = resolveSourcesButton.getSelection()
+    })
+
+    val resolveJavadocButton = composite.resolveJavadocButton
+    resolveJavadocButton.setSelection(settings.resolveJavadoc)
+    resolveJavadocButton.addSelectionListener(new SelectionAdapter() {
+      override def widgetSelected(event: SelectionEvent) =
+        settings.resolveJavadoc = resolveJavadocButton.getSelection()
     })
 
     val workspaceProjectAliases = composite.workspaceProjectAliasTable

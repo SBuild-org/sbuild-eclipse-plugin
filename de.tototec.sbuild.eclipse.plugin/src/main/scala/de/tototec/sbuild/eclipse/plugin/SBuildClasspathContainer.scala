@@ -130,12 +130,33 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
           Seq()
         case Success(files) =>
           debug(s"""Resolved dependency "${dep}" to "${files.mkString(", ")}" for project ${project.getProject.getName}.""")
+          var singleSource: Option[File] = None
+          if (settings.resolveSources) {
+            if (files.size == 1) {
+              // resolve sources via "source" scheme handler
+              resolver.resolve("source:" + dep, new NullProgressMonitor()) match {
+                case Success(sources) =>
+                  debug(s"""Successfully resolved sources for dep "${dep}"""")
+                  if (sources.size == 1) {
+                    debug(s"""Attaching sources for dep "${dep}": ${sources.mkString(", ")}""")
+                    singleSource = Some(sources.head)
+                  } else debug(s"""Avoit attaching of resolved sources for dep "${dep}" as they are not exactly one file.""")
+                case Failure(e) =>
+                  debug(s"""Could not resolve sources for dep "${dep}" of project: ${project.getProject.getName}.""", e)
+              }
+            } else debug(s"""Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
+          }
           files.map { file =>
             // IDEA: refresh the resource
             //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
             //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
             //            }
-            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath), null /*sourcepath*/ , null)
+            val sourcePath = singleSource match {
+              case Some(file) => new Path(file.getAbsolutePath())
+              case _ => null
+            }
+
+            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, null)
           }
       }
 

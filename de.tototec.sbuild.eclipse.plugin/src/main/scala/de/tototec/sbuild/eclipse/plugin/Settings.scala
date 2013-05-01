@@ -16,6 +16,12 @@ object Settings {
   val RelaxedFetchOfDependenciesDefault = true.toString
 
   val WorkspaceProjectAliasKey = "workspaceProjectAlias:"
+
+  val ResolveSourcesKey = "resolveSources"
+  val ResolveSourcesDefault = true.toString
+
+  val ResolveJavadocKey = "resolveJavadoc"
+  val ResolveJavadocDefault = false.toString
 }
 
 import de.tototec.sbuild.eclipse.plugin.Settings._
@@ -58,7 +64,8 @@ class Settings {
     }
   }
 
-  def sbuildFile: String = options.getOrElse(SBuildFileKey, SBuildFileDefault)
+  def sbuildFile: String =
+    options.getOrElse(SBuildFileKey, SBuildFileDefault)
   def sbuildFile_=(sbuildFile: String) = sbuildFile match {
     case null => options -= SBuildFileKey
     case x if x.trim == "" => options -= SBuildFileKey
@@ -66,7 +73,8 @@ class Settings {
     case x => options += (SBuildFileKey -> x)
   }
 
-  def exportedClasspath: String = options.getOrElse(ExportedClasspathKey, ExportedClasspathDefault)
+  def exportedClasspath: String =
+    options.getOrElse(ExportedClasspathKey, ExportedClasspathDefault)
   def exportedClasspath_=(exportedClasspath: String) = exportedClasspath match {
     case null => options -= ExportedClasspathKey
     case x if x.trim == "" => options -= ExportedClasspathKey
@@ -74,11 +82,25 @@ class Settings {
     case x => options += (ExportedClasspathKey -> x)
   }
 
-  def relaxedFetchOfDependencies =
+  def relaxedFetchOfDependencies: Boolean =
     options.getOrElse(RelaxedFetchOfDependenciesKey, RelaxedFetchOfDependenciesDefault) == true.toString
   def relaxedFetchOfDependencies_=(relaxedFetchOfDependencies: Boolean) = relaxedFetchOfDependencies.toString match {
     case RelaxedFetchOfDependenciesDefault => options -= RelaxedFetchOfDependenciesKey
     case x => options += (RelaxedFetchOfDependenciesKey -> x)
+  }
+
+  def resolveSources: Boolean =
+    options.getOrElse(ResolveSourcesKey, ResolveSourcesDefault) == true.toString
+  def resolveSources_=(resolveSources: Boolean) = resolveSources.toString match {
+    case ResolveSourcesDefault => options -= ResolveSourcesKey
+    case x => options += (ResolveSourcesKey -> x)
+  }
+
+  def resolveJavadoc: Boolean =
+    options.getOrElse(ResolveJavadocKey, ResolveJavadocDefault) == true.toString
+  def resolveJavadoc_=(resolveJavadoc: Boolean) = resolveJavadoc.toString match {
+    case ResolveJavadocDefault => options -= ResolveJavadocKey
+    case x => options += (ResolveJavadocKey -> x)
   }
 
 }
