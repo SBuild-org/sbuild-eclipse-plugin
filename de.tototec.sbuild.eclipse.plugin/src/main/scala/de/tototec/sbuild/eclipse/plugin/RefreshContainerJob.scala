@@ -17,21 +17,16 @@ import org.eclipse.core.runtime.NullProgressMonitor
 //  override def isConflicting(rule: ISchedulingRule): Boolean = sameRule(rule)
 //}
 
-class RefreshContainerJob(container: SBuildClasspathContainer, isUser: Boolean) extends Job("Refresh SBuild Libraries") {
-  setUser(isUser)
-  //  setRule(RefreshContainerRule)
-
-  override def run(monitorOrNull: IProgressMonitor): IStatus = try {
-    val monitor = Option(monitorOrNull).getOrElse(new NullProgressMonitor())
-    monitor.subTask("Updating library pathes")
-    container.updateClasspath(monitor)
-    Status.OK_STATUS
-  } catch {
-    case e: JavaModelException =>
-      error("Exception in refresh job.", e)
-      e.getStatus()
-  } finally {
-    Option(monitorOrNull).map(_.done())
+class RefreshContainerJob(container: SBuildClasspathContainer, isUser: Boolean)
+  extends SimpleJob("Refresh SBuild Libraries", isUser, None)((monitor: IProgressMonitor) => {
+    try {
+      monitor.subTask("Updating library pathes")
+      container.updateClasspath(monitor)
+      Status.OK_STATUS
+    } catch {
+      case e: JavaModelException =>
+        error("Exception in refresh job.", e)
+        e.getStatus()
+    }
   }
-
-}
+  ) 

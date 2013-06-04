@@ -19,10 +19,18 @@ import scala.util.Failure
 import scala.util.Success
 import org.eclipse.core.resources.IResource
 import org.eclipse.core.runtime.IProgressMonitor
+import scala.util.Try
+import org.eclipse.core.resources.IMarker
+import scala.collection.JavaConverters._
+import org.eclipse.core.runtime.jobs.Job
+import org.eclipse.core.runtime.IStatus
+import org.eclipse.core.runtime.Status
+import org.eclipse.jdt.core.IJavaModelMarker
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
   def SBuildHomeVariableName = "SBUILD_HOME"
+  def ContainerDescription = "SBuild Libraries"
 
   def getSBuildClasspathContainers(javaProjects: Array[IJavaProject]): Array[SBuildClasspathContainer] =
     javaProjects.flatMap { p => getSBuildClasspathContainers(p) }
@@ -35,7 +43,7 @@ object SBuildClasspathContainer {
         entry != null && entry.getEntryKind == IClasspathEntry.CPE_CONTAINER && entry.getPath.segment(0) == ContainerName
       }
       val sbuildContainers = sbuildContainerEntries.map { entry => JavaCore.getClasspathContainer(entry.getPath, javaProject) }
-      sbuildContainers.partition(_.isInstanceOf[SBuildClasspathContainer])._1.map { _.asInstanceOf[SBuildClasspathContainer] }
+      sbuildContainers.collect { case s: SBuildClasspathContainer => s }
     } catch {
       case e: Exception =>
         debug("Caught exception while retrieving SBuild containers.", e)
@@ -52,10 +60,12 @@ object SBuildClasspathContainer {
  *
  */
 class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends IClasspathContainer {
+  import SBuildClasspathContainer._
+
   debug("Creating new classpath container instance: " + this)
 
   override val getKind = IClasspathContainer.K_APPLICATION
-  override val getDescription = "SBuild Libraries"
+  override val getDescription = ContainerDescription
   override val getPath = path
 
   protected def projectRootFile: File = project.getProject.getLocation.makeAbsolute.toFile
@@ -66,6 +76,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
   protected var classpathEntries: Option[Array[IClasspathEntry]] = None
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
+  private[this] var _resolveIssues: Seq[String] = Seq()
+  def resolveIssues: Seq[String] = _resolveIssues
 
   def dependsOnWorkspaceProjects(projectNames: Array[String]) =
     relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
@@ -78,10 +90,59 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       case None => try {
         // first run, no background etc.
         debug("Evaluating classpath for the first time for project: " + project.getProject().getName())
-        val (newClasspathEntries, relatedWorkspaceProjectNames) = calcClasspath
-        val classpathEntriesArray = newClasspathEntries.toArray
+        val cpInfo = calcClasspath
+        val classpathEntriesArray = cpInfo.classpathEntries.toArray
         this.classpathEntries = Some(classpathEntriesArray)
-        this.relatedWorkspaceProjectNames = relatedWorkspaceProjectNames
+        this.relatedWorkspaceProjectNames = cpInfo.relatedProjects
+        this._resolveIssues = cpInfo.resolveIssues
+
+        val sbuildFile = project.getProject().getFile(settings.sbuildFile)
+
+        val sbuildProjectMarkerAttribute = "SBuildProjectMarker"
+
+        val projResource = project.getResource()
+        // sbuild file is missing, marker on project
+        SimpleJob.scheduleJob(title = "Updating SBuild markers", schedulingRule = Some(projResource)) { monitor =>
+
+          // delete marker
+          projResource.findMarkers(IJavaModelMarker.BUILDPATH_PROBLEM_MARKER, false, IResource.DEPTH_ZERO).foreach {
+            marker => if (marker.getAttribute(sbuildProjectMarkerAttribute) != null) marker.delete()
+          }
+
+          if (!sbuildFile.exists()) {
+            error(s"The Build file ${settings.sbuildFile} does not exist.")
+            val marker = projResource.createMarker(IJavaModelMarker.BUILDPATH_PROBLEM_MARKER)
+            marker.setAttributes(Map(
+              IMarker.SEVERITY -> IMarker.SEVERITY_ERROR,
+              IMarker.MESSAGE -> s"The Build file ${settings.sbuildFile} does not exist.",
+              sbuildProjectMarkerAttribute -> "true"
+            ).asJava)
+          } else {
+            // Report issues to UI
+            SimpleJob.scheduleJob(title = "Update SBuild markers", schedulingRule = Some(sbuildFile)) { monitor =>
+              monitor.subTask("Updating SBuild markers")
+
+              sbuildFile.deleteMarkers(IMarker.PROBLEM, false, IResource.DEPTH_INFINITE)
+
+              // TODO: parse compiler output and evaluate line of problem, see IMarker.LINE_NUMBER
+
+              _resolveIssues.foreach { msg =>
+                info("About to create an error marker: " + msg)
+                val problemMarker = sbuildFile.createMarker(IMarker.PROBLEM)
+                problemMarker.setAttributes(Map(
+                  IMarker.SEVERITY -> IMarker.SEVERITY_ERROR,
+                  IMarker.MESSAGE -> msg
+                //                  sbuildProjectMarkerAttribute -> "true"
+                ).asJava)
+              }
+
+              Status.OK_STATUS
+            }
+          }
+
+          Status.OK_STATUS
+        }
+
         classpathEntriesArray
       } catch {
         case e: Throwable =>
@@ -90,10 +151,12 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       }
     }
 
+  case class ClasspathInfo(classpathEntries: Seq[IClasspathEntry], relatedProjects: Set[String], resolveIssues: Seq[String])
+
   /**
    * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
    */
-  def calcClasspath: (Seq[IClasspathEntry], Set[String]) = {
+  def calcClasspath: ClasspathInfo = {
     // TODO: do the heavy work in background (or Job)
 
     // read the project
@@ -114,7 +177,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     debug("Reading project and resolve action definitions.")
 
-    val deps = resolver.exportedDependencies(settings.exportedClasspath)
+    val deps = resolver.exportedDependencies(settings.exportedClasspath) match {
+      case Right(d) => d
+      case Left(error) =>
+        return ClasspathInfo(Seq(), Set(), Seq(error))
+    }
     debug("Exported dependencies: " + deps.mkString(","))
 
     val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
@@ -123,17 +190,17 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     debug("Using workspaceProjectAliases: " + aliases)
 
     /** Resolve through embedded SBuild. Slurping all SBuild errors, but logging them. */
-    def resolveViaSBuild(dep: String): Seq[IClasspathEntry] =
+    def resolveViaSBuild(dep: String): Either[String, Seq[IClasspathEntry]] =
       resolver.resolve(dep, new NullProgressMonitor()) match {
         case Failure(e) =>
           debug(s"""Could not resolve dependency "${dep}" of project: ${project.getProject.getName}.""", e)
-          Seq()
+          Left(s"""Could not resolve dependency "${dep}" of project: ${project.getProject.getName}. """ + e.getLocalizedMessage())
         case Success(files) =>
           debug(s"""Resolved dependency "${dep}" to "${files.mkString(", ")}" for project ${project.getProject.getName}.""")
-          
+
           var singleSource: Option[File] = None
           var singleJavadoc: Option[File] = None
-          
+
           if (settings.resolveSources) {
             if (files.size == 1) {
               // resolve sources via "source" scheme handler
@@ -149,7 +216,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               }
             } else debug(s"""Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
           }
-          
+
           if (settings.resolveJavadoc) {
             if (files.size == 1) {
               // resolve javadoc via "javadoc" scheme handler
@@ -165,8 +232,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               }
             } else debug(s"""Skip resolve of javadoc for "${dep}" as they does not resolved to exactly one file.""")
           }
-          
-          files.map { file =>
+
+          Right(files.map { file =>
             // IDEA: refresh the resource
             //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
             //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
@@ -181,10 +248,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             }
 
             JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, javadocPath)
-          }
+          })
       }
 
     var relatedWorkspaceProjectNames: Set[String] = Set()
+    var issues: Seq[String] = Seq()
 
     // We will now check, if some of these targets can be resolved from workspace.
     // - If so, we instead add an classpath entry with the existing and open workspace project
@@ -192,19 +260,29 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     val classpathEntries =
       deps.flatMap { dep =>
         aliases.getAliasForDependency(dep) match {
-          case None => resolveViaSBuild(dep)
+          case None => resolveViaSBuild(dep) match {
+            case Right(cpe) => cpe
+            case Left(error) =>
+              issues ++= Seq(error)
+              Seq()
+          }
           case Some(alias) =>
             relatedWorkspaceProjectNames += alias
             javaModel.getJavaProject(alias) match {
               case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
                 debug("Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
                 Seq(JavaCore.newProjectEntry(javaProject.getPath))
-              case _ => resolveViaSBuild(dep)
+              case _ => resolveViaSBuild(dep) match {
+                case Right(cpe) => cpe
+                case Left(error) =>
+                  issues ++= Seq(error)
+                  Seq()
+              }
             }
         }
       }
 
-    (classpathEntries.distinct, relatedWorkspaceProjectNames)
+    ClasspathInfo(classpathEntries = classpathEntries.distinct, relatedProjects = relatedWorkspaceProjectNames, resolveIssues = issues)
   }
 
   def updateClasspath(monitor: IProgressMonitor): Unit = try {

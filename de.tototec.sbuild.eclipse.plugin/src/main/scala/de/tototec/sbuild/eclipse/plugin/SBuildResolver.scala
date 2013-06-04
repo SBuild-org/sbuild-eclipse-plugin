@@ -12,6 +12,7 @@ import scala.util.Failure
 import java.util.Properties
 import java.lang.reflect.Method
 import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
+import java.lang.reflect.InvocationTargetException
 
 class SBuildResolver(sbuildHomeDir: File, projectFile: File) {
 
@@ -66,14 +67,14 @@ class SBuildResolver(sbuildHomeDir: File, projectFile: File) {
     newResolver
   }
 
-  def exportedDependencies(exportName: String): Seq[String] = try {
-    getExportedDependenciesMethod.
+  def exportedDependencies(exportName: String): Either[String, Seq[String]] = try {
+    Right(getExportedDependenciesMethod.
       invoke(resolver, exportName).
-      asInstanceOf[Seq[String]]
+      asInstanceOf[Seq[String]])
   } catch {
-    case e: Throwable if sbuildExceptionClass.isInstance(e) =>
+    case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
       debug(s"""Could not retrieve exported dependencies "${exportName}".""", e)
-      Seq()
+      Left(s"""Could not retrieve exported dependencies "${exportName}". """ + e.getCause().getLocalizedMessage())
   }
 
   /**
