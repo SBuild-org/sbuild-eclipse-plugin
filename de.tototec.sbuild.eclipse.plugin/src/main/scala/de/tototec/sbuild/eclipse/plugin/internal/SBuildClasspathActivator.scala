@@ -12,51 +12,51 @@ import java.net.URLClassLoader
 import de.tototec.sbuild.eclipse.plugin.Classpathes
 import java.io.File
 
+/**
+ * Companion object for bundle activator class [[SBuildClasspathActivator]].
+ */
 object SBuildClasspathActivator {
-  private[this] var _activator: Option[SBuildClasspathActivator] = None
+  /**
+   * Access to the current activator instance.
+   */
   def activator = _activator.getOrElse {
     throw new IllegalStateException("SBuild Eclipse Plugin not activated.");
   }
   private def activator_=(activator: SBuildClasspathActivator) = _activator = Option(activator)
+  private[this] var _activator: Option[SBuildClasspathActivator] = None
 }
 
+/**
+ * Bundle activator class for the SBuild Eclipse Plugin.
+ */
 class SBuildClasspathActivator extends BundleActivator {
 
-  private var _bundleContext: Option[BundleContext] = None
+  private[this] var _bundleContext: Option[BundleContext] = None
   def bundleContext = _bundleContext.get
 
-  private var workspace: Option[IWorkspace] = None
-  private var workspaceProjectChangeListener: Option[WorkspaceProjectChangeListener] = None
+  private[this] var onStop: List[BundleContext => Unit] = Nil
 
+  /**
+   * Start of the bundle.
+   */
   override def start(bundleContext: BundleContext) {
-    Console.err.println("Starting bundle: " + bundleContext.getBundle)
-    this._bundleContext = Some(bundleContext)
     SBuildClasspathActivator.activator = this;
+    onStop ::= { _ => SBuildClasspathActivator.activator = null }
 
+    de.tototec.sbuild.eclipse.plugin.debug("Starting bundle: " + bundleContext.getBundle)
+    this._bundleContext = Some(bundleContext)
+    onStop ::= { _ => _bundleContext = None }
+
+    // Register project change listener
     val workspaceProjectChangeListener = new WorkspaceProjectChangeListener()
-    this.workspaceProjectChangeListener = Some(workspaceProjectChangeListener)
-
     val workspace = ResourcesPlugin.getWorkspace
-    this.workspace = Some(workspace)
-
     workspace.addResourceChangeListener(workspaceProjectChangeListener)
+    onStop ::= { _ => workspace.removeResourceChangeListener(workspaceProjectChangeListener) }
 
   }
 
-  override def stop(bundleContext: BundleContext) {
-    for (
-      workspace <- this.workspace;
-      projectListener <- this.workspaceProjectChangeListener
-    ) {
-      workspace.removeResourceChangeListener(projectListener)
-    }
-
-    workspaceProjectChangeListener = None
-    workspace = None
-
-    SBuildClasspathActivator.activator = null;
-    this._bundleContext = null
-  }
+  /** Stop of the bundle. */
+  override def stop(bundleContext: BundleContext) = onStop.foreach { f => f(bundleContext) }
 
   def log: ILog = Platform.getLog(bundleContext.getBundle)
 
