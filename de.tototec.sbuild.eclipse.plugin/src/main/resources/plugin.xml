@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
+   <!-- Initialize the SBUILD LIBRARIES classpath container -->
    <extension
        point="org.eclipse.jdt.core.classpathContainerInitializer">
       <classpathContainerInitializer
           id="de.tototec.sbuild.SBUILD_DEPENDENCIES"
           class="de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainerInitializer"/>
    </extension>
+   <!-- The configuration page of the SBUILD LIBRARIES classpath container -->
    <extension 
        point="org.eclipse.jdt.ui.classpathContainerPage">
       <classpathContainerPage
@@ -14,8 +16,21 @@
          	name="SBuild Libraries"
          	class="de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainerPage" />
    </extension>
+   <!-- Unfinished: The preferences page -->
    <extension
-    point="org.eclipse.core.runtime.preferences"   >
+    point="org.eclipse.core.runtime.preferences">
       <scope name="project" class="org.eclipse.core.internal.resources.ProjectPreferences"/>
+   </extension>
+   <!-- A decorator for the Package Explorer to indicate problems -->
+   <extension
+       point="org.eclipse.ui.decorators">
+      <decorator
+          id="de.tototec.sbuild.eclipse.plugin.ClasspathDecorator"
+          label="SBuild Classpath Decorator"
+          state="true"
+          lightweight="true"
+          class="de.tototec.sbuild.eclipse.plugin.ClasspathDecorator">
+         <description>Experimental! Enhance presentation of SBuild classpath elements with details provided by SBuild.</description> 
+      </decorator>
    </extension>
 </plugin>
