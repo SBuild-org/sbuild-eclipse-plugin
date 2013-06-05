@@ -26,11 +26,20 @@ import org.eclipse.core.runtime.jobs.Job
 import org.eclipse.core.runtime.IStatus
 import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.IJavaModelMarker
+import org.eclipse.core.resources.IFile
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
   def SBuildHomeVariableName = "SBUILD_HOME"
   def ContainerDescription = "SBuild Libraries"
+
+  def getSBuildClasspathContainerForResource(resource: IResource): Option[SBuildClasspathContainer] = {
+    val javaProj = JavaCore.create(resource.getProject())
+    getSBuildClasspathContainers(javaProj) match {
+      case Array() => None
+      case containers => Some(containers.head)
+    }
+  }
 
   def getSBuildClasspathContainers(javaProjects: Array[IJavaProject]): Array[SBuildClasspathContainer] =
     javaProjects.flatMap { p => getSBuildClasspathContainers(p) }
@@ -131,7 +140,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
                 val problemMarker = sbuildFile.createMarker(IMarker.PROBLEM)
                 problemMarker.setAttributes(Map(
                   IMarker.SEVERITY -> IMarker.SEVERITY_ERROR,
-                  IMarker.MESSAGE -> msg
+                  IMarker.MESSAGE -> msg,
+                  IMarker.LINE_NUMBER -> 1
                 //                  sbuildProjectMarkerAttribute -> "true"
                 ).asJava)
               }
@@ -294,5 +304,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   } finally {
     monitor.done()
   }
+
+  def dependsOnFile(file: IPath): Boolean =
+    project.getProject().getFile(settings.sbuildFile).getFullPath() == file
 
 }

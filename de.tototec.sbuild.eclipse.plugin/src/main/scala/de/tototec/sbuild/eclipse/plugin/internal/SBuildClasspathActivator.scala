@@ -11,6 +11,7 @@ import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
 import java.net.URLClassLoader
 import de.tototec.sbuild.eclipse.plugin.Classpathes
 import java.io.File
+import org.eclipse.core.resources.IResourceChangeEvent
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].
@@ -50,7 +51,7 @@ class SBuildClasspathActivator extends BundleActivator {
     // Register project change listener
     val workspaceProjectChangeListener = new WorkspaceProjectChangeListener()
     val workspace = ResourcesPlugin.getWorkspace
-    workspace.addResourceChangeListener(workspaceProjectChangeListener)
+    workspace.addResourceChangeListener(workspaceProjectChangeListener, IResourceChangeEvent.POST_CHANGE)
     onStop ::= { _ => workspace.removeResourceChangeListener(workspaceProjectChangeListener) }
 
   }
