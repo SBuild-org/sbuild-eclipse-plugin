@@ -1,6 +1,14 @@
-SBuild Eclipse Plugin trunk:
+SBuild Eclipse Plugin 0.4.2 - 2013-06-07:
 
-* Support for resolving/downloading sources and javadoc.
+* Support for resolving/downloading sources and javadoc. This delegated the
+  to a "source" and a "javadoc" scheme handler, which will be available since
+  SBuild 0.4.0.9000 (trunk milestone).
+* Show an Error Marker in Eclipse (Package Explorer, Problems View, Editor)
+  for SBuild build file errors.
+* Updates of the build file will now immediatly reflected in the classpath
+  container. No more need to close/reopen the project.
+* The SBuild Libraries entry in Package Explorer will be decorated with error
+  messages, if downloading of some dependencies failed.
 
 SBuild Eclipse Plugin 0.4.1 - 2013-04-29:
 
