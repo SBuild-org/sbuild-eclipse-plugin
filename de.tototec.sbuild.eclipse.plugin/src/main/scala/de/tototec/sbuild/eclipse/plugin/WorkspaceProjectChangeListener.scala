@@ -24,10 +24,6 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
   override def resourceChanged(event: IResourceChangeEvent): Unit = try {
     event.getType match {
-      //      case IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.PRE_DELETE =>
-      //        val project = getProject(event.getResource)
-      //        project.map { p => projectClosed(p) }
-
       case IResourceChangeEvent.POST_CHANGE =>
         event.getDelta match {
           case null =>
@@ -35,27 +31,13 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
             // detect changes to build files
 
-            var projectWithChangeSBuildFiles: Seq[SBuildClasspathContainer] = Seq()
-
-            //            projDelta.
+            var changedResources: List[IResource] = List()
             projDelta.accept(new IResourceDeltaVisitor {
               override def visit(delta: IResourceDelta): Boolean = {
                 //                info("Examining change: " + delta)
-                val resource = delta.getResource()
                 if ((delta.getFlags() & IResourceDelta.CONTENT) != 0) {
-
-                  //                val resourceFile = ResourcesPlugin.getWorkspace().getRoot().getFile(resource.getFullPath())
-                  //                info("Resource: " + resource + ", File: " + resourceFile)
-                  val container = SBuildClasspathContainer.getSBuildClasspathContainerForResource(resource)
-                  //                  info("Potential container: " + container)
-                  container match {
-                    case Some(scc) if scc.dependsOnFile(resource.getFullPath()) =>
-                      info("Project " + resource.getProject().getName() + " needs to re-evaluate its SBuild configuration based on file: " + resource.getName())
-                      projectWithChangeSBuildFiles ++= Seq(scc)
-                    //                    case Some(scc) =>
-                    //                      info("Project " + resource.getProject().getName() + " does not depends on resource: " + resource.getName())
-                    case _ =>
-                  }
+                  val resource = delta.getResource()
+                  changedResources ::= resource
                 }
                 true
               }
@@ -67,7 +49,9 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
             val openedProjs = getProjects(projDelta.getAffectedChildren(interestingFlags).
               collect { case d if (d.getFlags() & IResourceDelta.OPEN) != 0 => d.getResource() })
 
-            val projectsToUpdate = projectWithChangeSBuildFiles ++ affectedProjects(openedProjs)
+            val projectsToUpdate =
+              //              projectWithChangedSBuildFiles ++ 
+              affectedProjects(openedProjs, changedResources)
             projectsToUpdate.distinct.foreach { c =>
               val job = new RefreshContainerJob(container = c, isUser = false)
               job.schedule()
@@ -91,18 +75,21 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
     }
   }
 
-  def affectedProjects(projects: Array[IProject]): Array[SBuildClasspathContainer] = {
-    if (projects.isEmpty) Array()
+  def affectedProjects(projects: Array[IProject], changedResources: Seq[IResource]): Array[SBuildClasspathContainer] = {
+    if (projects.isEmpty && changedResources.isEmpty) Array()
     else {
 
       val projectNames = projects.map { _.getName }
 
-      info("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
+      debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
+      debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
       val sbuildContainers = SBuildClasspathContainer.getSBuildClasspathContainers(openJavaProjects)
-      val (projectsToUpdate, projectToIgnore) = sbuildContainers.partition { _.dependsOnWorkspaceProjects(projectNames) }
+      val projectsToUpdate = sbuildContainers.filter { scc =>
+        scc.dependsOnWorkspaceProjects(projectNames) || scc.dependsOnResources(changedResources)
+      }
 
       if (!projectsToUpdate.isEmpty)
         debug("Updating SBuild Libraries in projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)

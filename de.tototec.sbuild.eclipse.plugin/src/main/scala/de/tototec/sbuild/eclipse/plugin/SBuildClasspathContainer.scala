@@ -27,6 +27,7 @@ import org.eclipse.core.runtime.IStatus
 import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.IJavaModelMarker
 import org.eclipse.core.resources.IFile
+import java.net.URI
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
@@ -35,9 +36,11 @@ object SBuildClasspathContainer {
 
   def getSBuildClasspathContainerForResource(resource: IResource): Option[SBuildClasspathContainer] = {
     val javaProj = JavaCore.create(resource.getProject())
-    getSBuildClasspathContainers(javaProj) match {
+    if (javaProj == null) None
+    else getSBuildClasspathContainers(javaProj) match {
       case Array() => None
-      case containers => Some(containers.head)
+      case containers =>
+        Some(containers.head)
     }
   }
 
@@ -86,6 +89,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
   protected var classpathEntries: Option[Array[IClasspathEntry]] = None
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
   private[this] var _resolveIssues: Seq[String] = Seq()
+  private[this] var _includedFiles: Seq[String] = Seq()
   def resolveIssues: Seq[String] = _resolveIssues
 
   def dependsOnWorkspaceProjects(projectNames: Array[String]) =
@@ -104,6 +108,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         this.classpathEntries = Some(classpathEntriesArray)
         this.relatedWorkspaceProjectNames = cpInfo.relatedProjects
         this._resolveIssues = cpInfo.resolveIssues
+        this._includedFiles = cpInfo.includedFiles
 
         val sbuildFile = project.getProject().getFile(settings.sbuildFile)
 
@@ -161,7 +166,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       }
     }
 
-  case class ClasspathInfo(classpathEntries: Seq[IClasspathEntry], relatedProjects: Set[String], resolveIssues: Seq[String])
+  case class ClasspathInfo(classpathEntries: Seq[IClasspathEntry], relatedProjects: Set[String], resolveIssues: Seq[String], includedFiles: Seq[String])
 
   /**
    * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
@@ -181,16 +186,24 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     info("Reading project: " + project.getProject.getName)
     val resolver = new SBuildResolver(sbuildHomeDir, projectFile)
 
-    //    val reader = SBuildClasspathProjectReader.load(sbuildHomeDir, settings, projectRootFile)
+    // Experimental: Determine included resources via exported dependencies "sbuild.project.includes"
+    val includedFiles = resolver.exportedDependencies("sbuild.project.includes") match {
+      case Right(includes) => includes
+      case _ => Seq()
+    }
 
-    // TODO: Old up-to-date check logic was incomplete. Removed it completely for now
+    debug(s"Included files of project ${project.getProject().getName()}: " + includedFiles)
 
     debug("Reading project and resolve action definitions.")
 
     val deps = resolver.exportedDependencies(settings.exportedClasspath) match {
       case Right(d) => d
       case Left(error) =>
-        return ClasspathInfo(Seq(), Set(), Seq(error))
+        return ClasspathInfo(
+          classpathEntries = Seq(),
+          relatedProjects = Set(),
+          resolveIssues = Seq(error),
+          includedFiles = includedFiles)
     }
     debug("Exported dependencies: " + deps.mkString(","))
 
@@ -267,7 +280,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     // We will now check, if some of these targets can be resolved from workspace.
     // - If so, we instead add an classpath entry with the existing and open workspace project
     // - Else, we resolve the depenency and add the result to the classpath
-    val classpathEntries =
+    val classpathEntries: Seq[IClasspathEntry] =
       deps.flatMap { dep =>
         aliases.getAliasForDependency(dep) match {
           case None => resolveViaSBuild(dep) match {
@@ -292,7 +305,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         }
       }
 
-    ClasspathInfo(classpathEntries = classpathEntries.distinct, relatedProjects = relatedWorkspaceProjectNames, resolveIssues = issues)
+    ClasspathInfo(
+      classpathEntries = classpathEntries.distinct,
+      relatedProjects = relatedWorkspaceProjectNames,
+      resolveIssues = issues,
+      includedFiles = includedFiles)
   }
 
   def updateClasspath(monitor: IProgressMonitor): Unit = try {
@@ -305,7 +322,20 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     monitor.done()
   }
 
-  def dependsOnFile(file: IPath): Boolean =
-    project.getProject().getFile(settings.sbuildFile).getFullPath() == file
+  def dependsOnResources(resources: Seq[IResource]): Boolean = {
+    val projectFileUris = Seq(project.getProject().getFile(settings.sbuildFile).getLocationURI().normalize()) ++
+      _includedFiles.map { f => new URI(f).normalize() }
+
+    resources.exists { resource =>
+      val depFile = resource.getLocationURI().normalize()
+      projectFileUris.exists { fileUri =>
+        val found = depFile == fileUri
+        if (found)
+          debug(s"""Included file "${depFile}" of project ${project.getProject().getName()} changed.""")
+        found
+      }
+    }
+
+  }
 
 }

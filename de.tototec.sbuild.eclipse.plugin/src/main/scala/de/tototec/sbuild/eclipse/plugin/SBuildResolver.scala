@@ -76,7 +76,7 @@ class SBuildResolver(sbuildHomeDir: File, projectFile: File) {
       debug(s"""Could not retrieve exported dependencies "${exportName}".""", e)
       Left(s"""Could not retrieve exported dependencies "${exportName}". """ + e.getCause().getLocalizedMessage())
   }
-
+  
   /**
    * Resolve the given dependency.
    */
