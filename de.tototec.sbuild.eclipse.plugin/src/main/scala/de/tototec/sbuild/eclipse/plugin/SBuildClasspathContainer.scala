@@ -67,7 +67,6 @@ object SBuildClasspathContainer {
 /**
  * A ClasspathContainer, that will read a SBuild build file and read a special marked classpath available in Eclipse.
  *
- * TODO: check of file changes of buildfile
  * TODO: resolve the classpath in background
  *
  */

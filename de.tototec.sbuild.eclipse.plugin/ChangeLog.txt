@@ -1,3 +1,5 @@
+* Detect changes of included resources and refresh all affected projects.
+
 SBuild Eclipse Plugin 0.4.2 - 2013-06-07:
 
 * Support for resolving/downloading sources and javadoc. This delegated the
