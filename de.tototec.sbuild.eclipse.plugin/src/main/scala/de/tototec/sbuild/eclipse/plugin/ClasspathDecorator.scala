@@ -30,13 +30,12 @@ class ClasspathDecorator extends ILightweightLabelDecorator {
       case cpc: ClassPathContainer if cpc.getLabel() == SBuildClasspathContainer.ContainerDescription =>
         cpc.getJavaProject()
         val issues = SBuildClasspathContainer.getSBuildClasspathContainers(cpc.getJavaProject()).flatMap(_.resolveIssues)
-        if (!issues.isEmpty) decoration.addSuffix(" - Error: " + issues.mkString(" / "))
+        if (!issues.isEmpty) decoration.addSuffix(" - Error: " + issues.map(_.issue).mkString(" / "))
       //
       //        val res: IResource = null
       //        res.createMarker(arg0)
       //        
       //        cpc.
-        
 
       // jar inside classpath container
       //   case jar: JarPackageFragmentRoot => // no decoration required

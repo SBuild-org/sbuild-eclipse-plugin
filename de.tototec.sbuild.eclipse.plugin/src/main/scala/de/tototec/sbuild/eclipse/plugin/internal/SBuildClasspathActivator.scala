@@ -65,22 +65,25 @@ class SBuildClasspathActivator extends BundleActivator {
     log.log(new Status(status, bundleContext.getBundle.getSymbolicName, msg, cause))
   }
 
-  private[this] var sbuildClassLoader: Option[(File, URLClassLoader)] = None
+  case class CachedClassLoader(sbuildHomeDir: File, classLoader: URLClassLoader)
+  
+  private[this] var sbuildClassLoader: Option[CachedClassLoader] = None
 
   def sbuildEmbeddedClassLoader(sbuildHomeDir: File): ClassLoader = {
     sbuildClassLoader match {
-      case Some((homeDir, classLoader)) if homeDir.equals(sbuildHomeDir) =>
+      case Some(CachedClassLoader(homeDir, classLoader)) if homeDir.equals(sbuildHomeDir) =>
         de.tototec.sbuild.eclipse.plugin.debug("Using cached SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
         classLoader
 
       case _ =>
-        sbuildClassLoader.map { x =>
-          de.tototec.sbuild.eclipse.plugin.debug("Dropping cached classloader for SBuild Embedded: " + x._2.getURLs().toSeq)
+        sbuildClassLoader.map { cache =>
+          de.tototec.sbuild.eclipse.plugin.debug("Dropping cached classloader for SBuild Embedded: " + cache.classLoader.getURLs().toSeq)
         }
 
-        val classpath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
-        val classLoader = new URLClassLoader(classpath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
-        sbuildClassLoader = Some((sbuildHomeDir, classLoader))
+        val embeddedClasspath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
+        // TODO: check for changed files, if changed, than drop cached classloader
+        val classLoader = new URLClassLoader(embeddedClasspath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
+        sbuildClassLoader = Some(CachedClassLoader(sbuildHomeDir, classLoader))
         de.tototec.sbuild.eclipse.plugin.debug("Created and cached new SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
 
         classLoader

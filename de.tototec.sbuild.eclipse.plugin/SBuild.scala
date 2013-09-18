@@ -14,7 +14,8 @@ class SBuild(implicit _project: Project) {
   // val version = "0.4.2"
   val eclipseJar = s"target/${namespace}_${version}.jar"
 
-  val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
+  // val sbuildCoreJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
+  // val sbuildRunnerJar = "http://sbuild.tototec.de/sbuild/attachments/download/58/de.tototec.sbuild-0.4.0.jar"
   // val sbuildCoreJar = "../../sbuild/de.tototec.sbuild/target/de.tototec.sbuild-0.3.2.9002.jar"
 
   val featureXml = "target/feature/feature.xml"
@@ -44,7 +45,8 @@ class SBuild(implicit _project: Project) {
 
   val compileCp =
     s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
-      sbuildCoreJar ~
+      // sbuildCoreJar ~
+      // sbuildRunnerJar ~
       // "mvn:org.osgi:org.osgi.core:4.2.0" ~
       "mvn:org.eclipse:osgi:3.3.0-v20070530" ~
       "mvn:org.eclipse.core:runtime:3.3.100-v20070530" ~

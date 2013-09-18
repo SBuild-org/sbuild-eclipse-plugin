@@ -6,8 +6,6 @@ import scala.util.Try
 import org.eclipse.core.runtime.IProgressMonitor
 import scala.util.Success
 import java.lang.reflect.Constructor
-import de.tototec.sbuild.embedded.SBuildEmbedded
-import de.tototec.sbuild.SBuildException
 import scala.util.Failure
 import java.util.Properties
 import java.lang.reflect.Method

@@ -87,9 +87,9 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
   protected var classpathEntries: Option[Array[IClasspathEntry]] = None
   protected var relatedWorkspaceProjectNames: Set[String] = Set()
-  private[this] var _resolveIssues: Seq[String] = Seq()
+  private[this] var _resolveIssues: Seq[ResolveIssue] = Seq()
   private[this] var _includedFiles: Seq[String] = Seq()
-  def resolveIssues: Seq[String] = _resolveIssues
+  def resolveIssues: Seq[ResolveIssue] = _resolveIssues
 
   def dependsOnWorkspaceProjects(projectNames: Array[String]) =
     relatedWorkspaceProjectNames.exists(name => projectNames.contains(name))
@@ -122,6 +122,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             marker => if (marker.getAttribute(sbuildProjectMarkerAttribute) != null) marker.delete()
           }
 
+          // set marker if project file is missing
           if (!sbuildFile.exists()) {
             error(s"The Build file ${settings.sbuildFile} does not exist.")
             val marker = projResource.createMarker(IJavaModelMarker.BUILDPATH_PROBLEM_MARKER)
@@ -130,31 +131,79 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               IMarker.MESSAGE -> s"The Build file ${settings.sbuildFile} does not exist.",
               sbuildProjectMarkerAttribute -> "true"
             ).asJava)
-          } else {
-            // Report issues to UI
-            SimpleJob.scheduleJob(title = "Update SBuild markers", schedulingRule = Some(sbuildFile)) { monitor =>
-              monitor.subTask("Updating SBuild markers")
-
-              sbuildFile.deleteMarkers(IMarker.PROBLEM, false, IResource.DEPTH_INFINITE)
-
-              // TODO: parse compiler output and evaluate line of problem, see IMarker.LINE_NUMBER
-
-              _resolveIssues.foreach { msg =>
-                info("About to create an error marker: " + msg)
-                val problemMarker = sbuildFile.createMarker(IMarker.PROBLEM)
-                problemMarker.setAttributes(Map(
-                  IMarker.SEVERITY -> IMarker.SEVERITY_ERROR,
-                  IMarker.MESSAGE -> msg,
-                  IMarker.LINE_NUMBER -> 1
-                //                  sbuildProjectMarkerAttribute -> "true"
-                ).asJava)
-              }
-
-              Status.OK_STATUS
-            }
           }
 
           Status.OK_STATUS
+        }
+
+        if (sbuildFile.exists) {
+          // TODO: parse compiler output and evaluate line of problem, see IMarker.LINE_NUMBER
+
+          var sbuildFileMarkersReverse: List[() => Unit] = Nil
+
+          val projUri = projResource.getLocationURI().normalize()
+
+          def getResourceFromFile(filename: String): Option[IFile] = new File(filename) match {
+            case x if x.isAbsolute() =>
+              val fileUri = x.toURI()
+              if (fileUri.toString().startsWith(projUri.toString())) {
+                Some(project.getProject().getFile(projUri.relativize(fileUri).toString))
+              } else None
+            case _ => None
+          }
+
+          def addProblem(file: IFile, line: Int, issue: String, severity: Int) = {
+            sbuildFileMarkersReverse ::= { () =>
+              val problemMarker = file.createMarker(IMarker.PROBLEM)
+              problemMarker.setAttributes(Map(
+                IMarker.SEVERITY -> severity,
+                IMarker.MESSAGE -> issue,
+                IMarker.LINE_NUMBER -> line
+              //                  sbuildProjectMarkerAttribute -> "true"
+              ).asJava)
+            }
+          }
+          def addGenericProblem(issue: String, severity: Int) = addProblem(sbuildFile, 1, issue, severity)
+          def addGenericProblem2(file: String, line: Int, issue: String, severity: Int) = addProblem(sbuildFile, 1, s"${file}:${line}: ${issue}", severity)
+
+          _resolveIssues.foreach { msg =>
+
+            msg match {
+              case ResolveIssue.ProjectIssue(issue) =>
+                new ScalacOutputParser().parse(issue) match {
+                  case x if x.isEmpty =>
+                    // could not parse specific compiler output, so add a generic marker
+                    addGenericProblem(msg.issue, IMarker.SEVERITY_ERROR)
+
+                  case compilerIssues => compilerIssues.foreach {
+                    case ScalacOutputParser.Error(file, line, issue) =>
+                      getResourceFromFile(file) match {
+                        case Some(sbuildFile) => addProblem(sbuildFile, line, issue.mkString("\n"), IMarker.SEVERITY_ERROR)
+                        case _ => addGenericProblem2(file, line, issue.mkString("\n"), IMarker.SEVERITY_ERROR)
+                      }
+                    case ScalacOutputParser.Warning(file, line, issue) =>
+                      getResourceFromFile(file) match {
+                        case Some(sbuildFile) => addProblem(sbuildFile, line, issue.mkString("\n"), IMarker.SEVERITY_WARNING)
+                        case _ => addGenericProblem2(file, line, issue.mkString("\n"), IMarker.SEVERITY_WARNING)
+                      }
+                  }
+                }
+
+              case ResolveIssue.DependencyIssue(issue, dep) =>
+                // TODO add marker somewhere
+                addGenericProblem(issue, IMarker.SEVERITY_ERROR)
+            }
+
+          }
+
+          // Report issues to UI
+          SimpleJob.scheduleJob(title = "Update SBuild markers", schedulingRule = Some(sbuildFile)) { monitor =>
+            monitor.subTask("Updating SBuild markers")
+            sbuildFile.deleteMarkers(IMarker.PROBLEM, false, IResource.DEPTH_INFINITE)
+            sbuildFileMarkersReverse.reverse.foreach { marker => marker() }
+            Status.OK_STATUS
+          }
+
         }
 
         classpathEntriesArray
@@ -165,7 +214,17 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       }
     }
 
-  case class ClasspathInfo(classpathEntries: Seq[IClasspathEntry], relatedProjects: Set[String], resolveIssues: Seq[String], includedFiles: Seq[String])
+  sealed trait ResolveIssue {
+    def issue: String
+  }
+  object ResolveIssue {
+    case class ProjectIssue(override val issue: String) extends ResolveIssue
+    case class DependencyIssue(override val issue: String, dependency: String) extends ResolveIssue
+  }
+  case class ClasspathInfo(classpathEntries: Seq[IClasspathEntry],
+                           relatedProjects: Set[String],
+                           resolveIssues: Seq[ResolveIssue],
+                           includedFiles: Seq[String])
 
   /**
    * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
@@ -201,7 +260,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
         return ClasspathInfo(
           classpathEntries = Seq(),
           relatedProjects = Set(),
-          resolveIssues = Seq(error),
+          resolveIssues = Seq(ResolveIssue.ProjectIssue(error)),
           includedFiles = includedFiles)
     }
     debug("Exported dependencies: " + deps.mkString(","))
@@ -274,7 +333,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       }
 
     var relatedWorkspaceProjectNames: Set[String] = Set()
-    var issues: Seq[String] = Seq()
+    var issues: Seq[ResolveIssue] = Seq()
 
     // We will now check, if some of these targets can be resolved from workspace.
     // - If so, we instead add an classpath entry with the existing and open workspace project
@@ -285,7 +344,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
           case None => resolveViaSBuild(dep) match {
             case Right(cpe) => cpe
             case Left(error) =>
-              issues ++= Seq(error)
+              issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
               Seq()
           }
           case Some(alias) =>
@@ -297,7 +356,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               case _ => resolveViaSBuild(dep) match {
                 case Right(cpe) => cpe
                 case Left(error) =>
-                  issues ++= Seq(error)
+                  issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
                   Seq()
               }
             }
