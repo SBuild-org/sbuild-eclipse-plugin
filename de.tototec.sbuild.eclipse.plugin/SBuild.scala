@@ -74,7 +74,7 @@ class SBuild(implicit _project: Project) {
 
   ExportDependencies("eclipse.classpath", testCp)
 
-  Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip ~ "test"
+  Target("phony:all") dependsOn eclipseJar ~ "updateSite" ~ updateSiteZip ~ "test"
 
   Target("phony:clean").evictCache exec {
     AntDelete(dir = Path("target"))
@@ -256,7 +256,7 @@ SUCH DAMAGE.
     AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/scala-feature"))
   }
 
-  Target("phony:update-site") dependsOn featureJar ~ scalaLibFeatureJar ~ eclipseJar ~ scalaLibBundle exec { ctx: TargetContext =>
+  Target("phony:updateSite") dependsOn featureJar ~ scalaLibFeatureJar ~ eclipseJar ~ scalaLibBundle exec { ctx: TargetContext =>
 
     val scalaLibBundle = this.scalaLibBundle.files.head
 

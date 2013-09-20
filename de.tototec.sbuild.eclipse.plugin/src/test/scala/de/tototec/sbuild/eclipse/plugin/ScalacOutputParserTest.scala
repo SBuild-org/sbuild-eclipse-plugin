@@ -9,7 +9,7 @@ class ScalacOutputParserTest extends FunSuite {
   test("findEnd") {
     assert(
       parser.findEnd("file", 1, "error", List("firstLine"), List("second line", "  ^")) ===
-        (List(ScalacOutputParser.Error("file", 1, Seq("firstLine", "second line", "  ^"))), Nil)
+        (List(ScalacOutputParser.Error("file", 1, Seq("firstLine", "Source: se[^]cond line"))), Nil)
     )
   }
 
@@ -28,8 +28,7 @@ class ScalacOutputParserTest extends FunSuite {
       3,
       Seq(
         "expected class or object definition",
-        "aimport de.tototec.sbuild._",
-        "^")
+        "Source: [^]aimport de.tototec.sbuild._")
     )))
   }
 
@@ -49,8 +48,7 @@ class ScalacOutputParserTest extends FunSuite {
         3,
         Seq(
           "expected class or object definition",
-          "aimport de.tototec.sbuild._",
-          "^")
+          "Source: [^]aimport de.tototec.sbuild._")
       )))
   }
 }
