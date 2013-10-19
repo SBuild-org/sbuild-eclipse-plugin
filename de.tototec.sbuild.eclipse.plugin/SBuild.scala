@@ -68,9 +68,7 @@ class SBuild(implicit _project: Project) {
 
   val testCp =
     compileCp ~
-    "mvn:org.scalatest:scalatest_2.10:1.9.1" ~
-    s"mvn:org.scala-lang:scala-actors:$scalaVersion"
-
+    "mvn:org.scalatest:scalatest_2.10:2.0.RC2"
 
   ExportDependencies("eclipse.classpath", testCp)
 
@@ -309,10 +307,14 @@ SUCH DAMAGE.
   }
 
   Target("phony:test") dependsOn eclipseJar ~ testCp ~ "compileTest" exec { ctx: TargetContext =>
-    de.tototec.sbuild.addons.scalatest.ScalaTest(
-      classpath = ctx.fileDependencies,
-      runPath = Seq("target/test-classes"),
-      reporter = "oF")
+    // de.tototec.sbuild.addons.scalatest.ScalaTest(
+    //  classpath = ctx.fileDependencies,
+    //  runPath = Seq("target/test-classes"),
+    //  reporter = "oF")
+    addons.support.ForkSupport.runJavaAndWait(
+      classpath = eclipseJar.files ++ testCp.files,
+      arguments = Array("org.scalatest.tools.Runner", "-p", Path("target/test-classes").getPath, "-oF", "-u", Path("target/test-output").getPath)
+    )
   }
 
 }
