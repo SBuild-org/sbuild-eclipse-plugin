@@ -14,7 +14,7 @@ To build, you need a recent SBuild installed.
 ----
 git clone https://github.com/lefou/sbuild-eclipse-plugin.git
 cd sbuild-eclipse-plugin
-sbuild clean all
+sbuild all
 ----
 
 After that, you will find an update-site under `de.tototec.sbuild.eclipse.plugin/target/update-site`.
