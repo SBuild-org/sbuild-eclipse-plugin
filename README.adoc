@@ -12,7 +12,7 @@ http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin
 To build, you need a recent SBuild installed.
 
 ----
-git clone https://github.com/lefou/sbuild-eclipse-plugin.git
+git clone https://github.com/SBuild-org/sbuild-eclipse-plugin.git
 cd sbuild-eclipse-plugin
 sbuild all
 ----
