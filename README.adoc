@@ -1,0 +1,20 @@
+= SBuild Eclipse Plugin
+
+http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin
+
+
+== Installation
+
+http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin
+
+== Building SBuild Eclipse Plugin
+
+To build, you need a recent SBuild installed.
+
+----
+git clone https://github.com/lefou/sbuild-eclipse-plugin.git
+cd sbuild-eclipse-plugin
+sbuild clean all
+----
+
+After that, you will find an update-site under `de.tototec.sbuild.eclipse.plugin/target/update-site`.
