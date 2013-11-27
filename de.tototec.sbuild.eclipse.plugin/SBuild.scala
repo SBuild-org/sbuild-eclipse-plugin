@@ -64,7 +64,8 @@ class SBuild(implicit _project: Project) {
       "mvn:org.eclipse.equinox:registry:3.3.0-v20070522" ~
       "mvn:org.eclipse.equinox:preferences:3.2.100-v20070522" ~
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
-      "mvn:de.tototec:de.tototec.cmdoption:0.2.1"
+      "mvn:de.tototec:de.tototec.cmdoption:0.2.1" ~
+      "mvn:org.slf4j:slf4j-api:1.7.1"
 
   val testCp =
     compileCp ~
@@ -72,7 +73,7 @@ class SBuild(implicit _project: Project) {
 
   ExportDependencies("eclipse.classpath", testCp)
 
-  Target("phony:all") dependsOn eclipseJar ~ "updateSite" ~ updateSiteZip ~ "test"
+  Target("phony:all") dependsOn eclipseJar ~ "update-site" ~ updateSiteZip ~ "test"
 
   Target("phony:clean").evictCache exec {
     AntDelete(dir = Path("target"))
@@ -105,11 +106,13 @@ class SBuild(implicit _project: Project) {
         "Bundle-ActivationPolicy" -> "lazy",
         "Implementation-Version" -> "${Bundle-Version}",
         "Private-Package" -> s"""${namespace},
+                                 ${namespace}.targetview,
                                  ${namespace}.internal""",
         "Import-Package" -> """!de.tototec.sbuild.*,
                                !de.tototec.cmdoption.*,
                                org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
                                org.eclipse.core.internal.resources,
+                               org.slf4j.*;resolition:=optional,
                                *""",
         "DynamicImport-Package" -> """!scala.tools.*,
                                       scala.*""",
@@ -254,7 +257,7 @@ SUCH DAMAGE.
     AntJar(destFile = ctx.targetFile.get, baseDir = Path("target/scala-feature"))
   }
 
-  Target("phony:updateSite") dependsOn featureJar ~ scalaLibFeatureJar ~ eclipseJar ~ scalaLibBundle exec { ctx: TargetContext =>
+  Target("phony:update-site") dependsOn featureJar ~ scalaLibFeatureJar ~ eclipseJar ~ scalaLibBundle exec { ctx: TargetContext =>
 
     val scalaLibBundle = this.scalaLibBundle.files.head
 
