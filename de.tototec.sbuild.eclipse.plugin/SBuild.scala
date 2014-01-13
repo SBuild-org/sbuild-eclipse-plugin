@@ -112,7 +112,7 @@ class SBuild(implicit _project: Project) {
                                !de.tototec.cmdoption.*,
                                org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
                                org.eclipse.core.internal.resources,
-                               org.slf4j.*;resolition:=optional,
+                               org.slf4j.*;resolution:=optional,
                                *""",
         "DynamicImport-Package" -> """!scala.tools.*,
                                       scala.*""",
@@ -130,6 +130,7 @@ class SBuild(implicit _project: Project) {
     val props = new java.util.Properties()
     props.put("description", "Eclipse Integration for SBuild Buildsystem.")
     props.put("license", license.mkString("\n"))
+    ctx.targetFile.get.getParentFile.mkdirs
     props.store(new java.io.FileWriter(ctx.targetFile.get), null)
   }
 
