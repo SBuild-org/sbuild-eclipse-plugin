@@ -113,9 +113,10 @@ class SBuild(implicit _project: Project) {
                                org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
                                org.eclipse.core.internal.resources,
                                org.slf4j.*;resolution:=optional,
+                               scala.*;version="[2.10,2.10.49)",
                                *""",
         "DynamicImport-Package" -> """!scala.tools.*,
-                                      scala.*""",
+                                      scala.*;version="[2.10,2.10.49)"""",
         "Include-Resource" -> """src/main/resources""",
         "-removeheaders" -> "Include-Resource",
         "Bundle-RequiredExecutionEnvironment" -> "JavaSE-1.6"
