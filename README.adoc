@@ -1,11 +1,11 @@
 = SBuild Eclipse Plugin
 
-http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin
+http://sbuild.org/eclipse
 
 
 == Installation
 
-http://sbuild.tototec.de/sbuild/projects/sbuild/wiki/SBuildEclipsePlugin
+http://sbuild.org/eclipse
 
 == Building SBuild Eclipse Plugin
 
