@@ -18,3 +18,7 @@ sbuild all
 ----
 
 After that, you will find an update-site under `de.tototec.sbuild.eclipse.plugin/target/update-site`.
+
+== Changelog
+
+* link:de.tototec.sbuild.eclipse.plugin/ChangeLog.txt[Changelog for SBuild Eclipse Plugin 0.1.0 - 0.4.x]

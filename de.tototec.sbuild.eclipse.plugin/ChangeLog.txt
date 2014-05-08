@@ -1,4 +1,4 @@
-SBuild Eclipse Plugin trunk:
+SBuild Eclipse Plugin 0.4.3 -2014-05-08:
 
 * Detect changes of included resources and refresh all affected projects.
 * Better error marker when buildfile could not be compiled. It not shows the
