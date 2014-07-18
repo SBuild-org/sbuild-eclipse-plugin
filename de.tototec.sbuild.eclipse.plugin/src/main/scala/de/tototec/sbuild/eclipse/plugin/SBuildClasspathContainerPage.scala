@@ -27,6 +27,8 @@ import org.eclipse.jface.viewers.EditingSupport
 import org.eclipse.jface.viewers.TextCellEditor
 import org.eclipse.jface.viewers.CellEditor
 import org.eclipse.jface.viewers.ComboBoxViewerCellEditor
+import org.eclipse.jdt.internal.ui.packageview.ClassPathContainer
+import org.eclipse.core.runtime.NullProgressMonitor
 
 class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with IClasspathContainerPage with IClasspathContainerPageExtension {
 
@@ -60,13 +62,15 @@ class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with I
   }
 
   override def setSelection(classpathEntry: IClasspathEntry) = settings.fromIClasspathEntry(classpathEntry)
-  override def getSelection: IClasspathEntry = settings.toIClasspathEntry
+  override def getSelection(): IClasspathEntry = settings.toIClasspathEntry
 
-  override def finish: Boolean = {
+  override def finish(): Boolean = {
     debug("Write workspace project aliases from " + getClass())
     val (regex, nonRegex) = aliasModel.partition(_.regex)
     WorkspaceProjectAliases.write(project, WorkspaceProjectAliases.WorkspaceProjectRegexAliasNode, regex.map { case AliasEntry(key, value, true) => (key, value) }.toMap)
     WorkspaceProjectAliases.write(project, WorkspaceProjectAliases.WorkspaceProjectAliasNode, nonRegex.map { case AliasEntry(key, value, false) => (key, value) }.toMap)
+    // update the classpath container to reflect changes
+    SBuildClasspathContainer.getSBuildClasspathContainers(project).map(c => c.updateClasspath(new NullProgressMonitor()))
     true
   }
 
