@@ -288,10 +288,13 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               resolver.resolve("source:" + dep, new NullProgressMonitor()) match {
                 case Success(sources) =>
                   debug(s"""Successfully resolved sources for dep "${dep}"""")
-                  if (sources.size == 1) {
-                    debug(s"""Attaching sources for dep "${dep}": ${sources.mkString(", ")}""")
+                  if (sources.isEmpty) {
+                    debug(s"""Empty sources list for dep "${dep}".""")
+                  } else {
+                    if (sources.size > 1) debug(s"""Just using the first file of resolved sources for dep "${dep}" but multiple files were given: ${sources.mkString(", ")}""")
+                    debug(s"""Attaching sources for dep "${dep}": ${sources.head}""")
                     singleSource = Some(sources.head)
-                  } else debug(s"""Avoit attaching of resolved sources for dep "${dep}" as they are not exactly one file.""")
+                  }
                 case Failure(e) =>
                   debug(s"""Could not resolve sources for dep "${dep}" of project: ${project.getProject.getName}.""", e)
               }
@@ -304,10 +307,13 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
               resolver.resolve("javadoc:" + dep, new NullProgressMonitor()) match {
                 case Success(javadoc) =>
                   debug(s"""Successfully resolved javadoc for dep "${dep}"""")
-                  if (javadoc.size == 1) {
-                    debug(s"""Attaching javadoc for dep "${dep}": ${javadoc.mkString(", ")}""")
+                  if (javadoc.isEmpty) {
+                    debug(s"""Empty javadoc list for dep "${dep}".""")
+                  } else {
+                    if (javadoc.size > 1) debug(s"""Just using the first file of resolved javadoc for dep "${dep}" but multiple files were given: ${javadoc.mkString(", ")}""")
+                    debug(s"""Attaching javadoc for dep "${dep}": ${javadoc.head}""")
                     singleSource = Some(javadoc.head)
-                  } else debug(s"""Avoit attaching of resolved javadoc for dep "${dep}" as they are not exactly one file.""")
+                  }
                 case Failure(e) =>
                   debug(s"""Could not resolve javadoc for dep "${dep}" of project: ${project.getProject.getName}.""", e)
               }
