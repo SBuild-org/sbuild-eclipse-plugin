@@ -13,11 +13,11 @@ To build, you need a recent SBuild installed.
 
 ----
 git clone https://github.com/SBuild-org/sbuild-eclipse-plugin.git
-cd sbuild-eclipse-plugin/de.tototec.sbuild.eclipse.plugin
-sbuild all
+cd sbuild-eclipse-plugin/update-site
+sbuild update-site
 ----
 
-After that, you will find an update-site under `de.tototec.sbuild.eclipse.plugin/target/update-site`.
+After that, you will find an update-site under `update-site/target/update-site`.
 
 == Changelog
 
