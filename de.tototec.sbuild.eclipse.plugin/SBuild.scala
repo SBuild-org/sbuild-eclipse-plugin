@@ -2,7 +2,8 @@ import org.sbuild._
 
 @version("0.7.9013")
 @classpath("/home/lefou/work/tototec/sbuild/sbuild-scalac-plugin/org.sbuild.plugins.scalac/target/org.sbuild.plugins.scalac-0.0.9000.jar",
-  "/home/lefou/work/tototec/sbuild/sbuild-bndjar-plugin/org.sbuild.plugins.bndjar/target/org.sbuild.plugins.bndjar-0.0.9000.jar")
+  "/home/lefou/work/tototec/sbuild/sbuild-bndjar-plugin/org.sbuild.plugins.bndjar/target/org.sbuild.plugins.bndjar-0.0.9000.jar",
+  "http://sbuild.org/uploads/sbuild/0.7.9010.0-8-0-M1/org.sbuild.addons-0.7.9010.0-8-0-M1.jar")
 class SBuild(implicit _project: Project) {
 
   val namespace = "de.tototec.sbuild.eclipse.plugin"
@@ -96,11 +97,11 @@ class SBuild(implicit _project: Project) {
     classpath(testCp ~ mainJar.get.jarFile)
   )
 
-  //  Target("phony:test") dependsOn mainJar.get.jarFile ~ testCp ~ testScalac.get.compileTargetName exec {
-  //    addons.support.ForkSupport.runJavaAndWait(
-  //      classpath = eclipseJar.files ++ testCp.files,
-  //      arguments = Array("org.scalatest.tools.Runner", "-p", Path("target/test-classes").getPath, "-oF", "-u", Path("target/test-output").getPath)
-  //    )
-  //  }
+  Target("phony:test") dependsOn mainJar.get.jarFile ~ testCp ~ testScalac.get.compileTargetName exec {
+    addons.support.ForkSupport.runJavaAndWait(
+      classpath = eclipseJar.files ++ testCp.files,
+      arguments = Array("org.scalatest.tools.Runner", "-p", Path("target/test-classes").getPath, "-oF", "-u", Path("target/test-output").getPath)
+    )
+  }
 
 }

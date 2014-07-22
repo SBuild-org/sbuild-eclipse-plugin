@@ -11,7 +11,7 @@ package object plugin {
     //      Console.err.println(cause.getMessage())
     //      cause.printStackTrace(Console.err)
     //    }
-    //    SBuildClasspathActivator.activator.log(IStatus.INFO, msg, cause)
+    SBuildClasspathActivator.activator.log(IStatus.INFO, msg, cause)
   }
 
   /** Print an info message. */

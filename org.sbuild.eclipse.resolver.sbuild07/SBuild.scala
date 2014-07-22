@@ -12,6 +12,7 @@ class SBuild(implicit _project: Project) {
   val compileCp = s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
     "../org.sbuild.eclipse.resolver/target/org.sbuild.eclipse.resolver-0.1.0.jar" ~
     "mvn:org.osgi:org.osgi.core:4.1.0"
+//    "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100"
 
   Target("phony:clean").evictCache exec {
     Path("target").deleteRecursive
@@ -37,5 +38,6 @@ class SBuild(implicit _project: Project) {
                               scala.*;version="$${range;[==,=+)}",
                               *""",
       "DynamicImport-Package" -> """!scala.tools.*,
-                                    scala.*;version="[2.10,2.10.49)"""")))
+                                    scala.*;version="[2.10,2.10.49)"""",
+      "SBuild-Service" -> "org.sbuild.eclipse.resolver.SBuildResolver")))
 }

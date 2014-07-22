@@ -10,8 +10,10 @@ import java.io.File
 class SBuild07ResolverActivator extends BundleActivator {
 
   override def start(context: BundleContext): Unit = {
+    // FIXME: get SBUILD HOME from configuration
     val sbuildHomeDir = new File("/usr/share/sbuild")
     val resolver = new SBuild07Resolver(sbuildHomeDir)
+    
     context.registerService(classOf[SBuildResolver].getName, resolver, null)
   }
 
