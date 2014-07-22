@@ -12,6 +12,11 @@ import java.net.URLClassLoader
 import de.tototec.sbuild.eclipse.plugin.Classpathes
 import java.io.File
 import org.eclipse.core.resources.IResourceChangeEvent
+import org.sbuild.eclipse.resolver.SBuildResolver
+import org.osgi.util.tracker.ServiceTracker
+import org.osgi.framework.ServiceReference
+import java.util.{ List => JList }
+import org.sbuild.eclipse.resolver.{ Either => JEither }
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].
@@ -37,6 +42,8 @@ class SBuildClasspathActivator extends BundleActivator {
 
   private[this] var onStop: List[BundleContext => Unit] = Nil
 
+  private[this] var resolvers: Seq[SBuildResolver] = Seq()
+
   /**
    * Start of the bundle.
    */
@@ -47,6 +54,22 @@ class SBuildClasspathActivator extends BundleActivator {
     de.tototec.sbuild.eclipse.plugin.debug("Starting bundle: " + bundleContext.getBundle)
     this._bundleContext = Some(bundleContext)
     onStop ::= { _ => _bundleContext = None }
+
+    val tracker = new ServiceTracker(bundleContext, classOf[SBuildResolver].getName, null) {
+      override def addingService(reference: ServiceReference): AnyRef = {
+        de.tototec.sbuild.eclipse.plugin.info("Registering detected SBuild Resover: " + reference)
+        val service = bundleContext.getService(reference).asInstanceOf[SBuildResolver]
+        synchronized { resolvers ++= Seq(service) }
+        service
+      }
+      override def removedService(reference: ServiceReference, service: AnyRef): Unit = {
+        de.tototec.sbuild.eclipse.plugin.info("Unregistering SBuild Resover: " + reference)
+        bundleContext.ungetService(reference)
+        synchronized { resolvers = resolvers.filter(service.eq) }
+      }
+    }
+    tracker.open();
+    onStop ::= { _ => tracker.close() }
 
     // Register project change listener
     val workspaceProjectChangeListener = new WorkspaceProjectChangeListener()
@@ -65,30 +88,27 @@ class SBuildClasspathActivator extends BundleActivator {
     log.log(new Status(status, bundleContext.getBundle.getSymbolicName, msg, cause))
   }
 
-  case class CachedClassLoader(sbuildHomeDir: File, classLoader: URLClassLoader)
-  
-  private[this] var sbuildClassLoader: Option[CachedClassLoader] = None
-
-  def sbuildEmbeddedClassLoader(sbuildHomeDir: File): ClassLoader = {
-    sbuildClassLoader match {
-      case Some(CachedClassLoader(homeDir, classLoader)) if homeDir.equals(sbuildHomeDir) =>
-        de.tototec.sbuild.eclipse.plugin.debug("Using cached SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
-        classLoader
-
-      case _ =>
-        sbuildClassLoader.map { cache =>
-          de.tototec.sbuild.eclipse.plugin.debug("Dropping cached classloader for SBuild Embedded: " + cache.classLoader.getURLs().toSeq)
+  val sbuildResolver: SBuildResolver = new SBuildResolver {
+    override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, JList[String]] = {
+      if (resolvers.isEmpty) {
+        return JEither.left(new RuntimeException("No SBuild Resolvers found."))
+      } else {
+        val stream = resolvers.toStream.map(_.exportedDependencies(projectFile, exportName))
+        stream.find(_.isRight()).getOrElse {
+          JEither.left(new RuntimeException("No SBuild Resolver could successfully export. Causes:\n - " + stream.map(_.left().getLocalizedMessage()).mkString("\n - ")))
         }
-
-        val embeddedClasspath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
-        // TODO: check for changed files, if changed, than drop cached classloader
-        val classLoader = new URLClassLoader(embeddedClasspath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
-        sbuildClassLoader = Some(CachedClassLoader(sbuildHomeDir, classLoader))
-        de.tototec.sbuild.eclipse.plugin.debug("Created and cached new SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
-
-        classLoader
+      }
     }
-
+    override def resolve(projectFile: File, dependency: String): JEither[Throwable, JList[File]] = {
+      if (resolvers.isEmpty) {
+        return JEither.left(new RuntimeException("No SBuild Resolvers found."))
+      } else {
+        val stream = resolvers.toStream.map(_.resolve(projectFile, dependency))
+        stream.find(_.isRight()).getOrElse {
+          JEither.left(new RuntimeException("No SBuild Resolver could successfully export. Causes:\n - " + stream.map(_.left().getLocalizedMessage()).mkString("\n - ")))
+        }
+      }
+    }
   }
 
 }

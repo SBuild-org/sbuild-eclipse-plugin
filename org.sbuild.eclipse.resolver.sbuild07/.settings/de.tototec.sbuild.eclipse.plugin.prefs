@@ -1,2 +1,2 @@
 eclipse.preferences.version=1
-workspaceProjectRegexAlias//.*/org.sbuild.eclipse.resolver/.*/main.jar=org.sbuild.eclipse.resolver
+workspaceProjectRegexAlias//.*/(org.sbuild.eclipse.resolver)-.*\\.jar=org.sbuild.eclipse.resolver

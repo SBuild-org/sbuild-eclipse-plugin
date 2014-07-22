@@ -18,6 +18,7 @@ class SBuild(implicit _project: Project) {
   import org.sbuild.plugins.bndjar._
   Plugin[BndJar]("main") configure (_.
     bndLib("mvn:biz.aQute.bnd:bndlib:2.1.0").
+    jarFile(Path(s"target/${namespace}-${version}.jar")).
     classesDirs(javac.targetDir).
     dependsOn(javac.compileTargetName).
     props(Map(
