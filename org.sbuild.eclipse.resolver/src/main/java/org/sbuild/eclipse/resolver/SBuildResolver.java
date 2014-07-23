@@ -1,7 +1,6 @@
 package org.sbuild.eclipse.resolver;
 
 import java.io.File;
-import java.util.List;
 
 /**
  * Abtract over some SBuild functionality.
@@ -12,9 +11,9 @@ import java.util.List;
  */
 public interface SBuildResolver {
 
-	Either<Throwable, List<String>> exportedDependencies(File projectFile,
+	Either<Throwable, String[]> exportedDependencies(File projectFile,
 			String exportName);
 
-	Either<Throwable, List<File>> resolve(File projectFile, String dependency);
+	Either<Throwable, File[]> resolve(File projectFile, String dependency);
 
 }

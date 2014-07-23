@@ -16,6 +16,8 @@ class SBuild(implicit _project: Project) {
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
+  val resolverModule = Module("../org.sbuild.eclipse.resolver")
+
   val compilerCp =
     s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
       s"mvn:org.scala-lang:scala-compiler:${scalaVersion}" ~
@@ -44,7 +46,7 @@ class SBuild(implicit _project: Project) {
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
       "mvn:de.tototec:de.tototec.cmdoption:0.2.1" ~
       "mvn:org.slf4j:slf4j-api:1.7.1" ~
-      "../org.sbuild.eclipse.resolver/target/org.sbuild.eclipse.resolver-0.1.0.jar"
+      resolverModule.targetRef("jar-main")
 
   val testCp =
     compileCp ~
@@ -75,15 +77,16 @@ class SBuild(implicit _project: Project) {
       "Bundle-ActivationPolicy" -> "lazy",
       "Implementation-Version" -> "${Bundle-Version}",
       "Private-Package" -> s"""${namespace},
-    		${namespace}.targetview,
-    		${namespace}.internal""",
+                               ${namespace}.targetview,
+                               ${namespace}.internal""",
       "Import-Package" -> """!de.tototec.sbuild.*,
-    		!de.tototec.cmdoption.*,
-    		org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
-    		org.eclipse.core.internal.resources,
-    		org.slf4j.*;resolution:=optional,
-    		scala.*;version="[2.10,2.10.49)",
-    		*""",
+                             !de.tototec.cmdoption.*,
+                             org.eclipse.core.runtime;registry=!;common=!;version="3.3.0",
+                             org.eclipse.core.internal.resources,
+                             org.slf4j.*;resolution:=optional,
+                             org.sbuild.eclipse.resolver;provide:=true,
+                             scala.*;provide:=true,
+                             *""",
       //      "DynamicImport-Package" -> """!scala.tools.*,
       //    		scala.*;version="[2.10,2.10.49)"""",
       "Include-Resource" -> """src/main/resources""",

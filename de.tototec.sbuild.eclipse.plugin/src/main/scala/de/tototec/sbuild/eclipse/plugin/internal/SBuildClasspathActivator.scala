@@ -111,7 +111,7 @@ class SBuildClasspathActivator extends BundleActivator {
     bundleContext.map(scanAndStartExtensionBundles)
 
     new SBuildResolver {
-      override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, JList[String]] = {
+      override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, Array[String]] = {
         if (resolvers.isEmpty) {
           return JEither.left(new RuntimeException("No SBuild Resolvers found."))
         } else {
@@ -121,7 +121,7 @@ class SBuildClasspathActivator extends BundleActivator {
           }
         }
       }
-      override def resolve(projectFile: File, dependency: String): JEither[Throwable, JList[File]] = {
+      override def resolve(projectFile: File, dependency: String): JEither[Throwable, Array[File]] = {
         if (resolvers.isEmpty) {
           return JEither.left(new RuntimeException("No SBuild Resolvers found."))
         } else {

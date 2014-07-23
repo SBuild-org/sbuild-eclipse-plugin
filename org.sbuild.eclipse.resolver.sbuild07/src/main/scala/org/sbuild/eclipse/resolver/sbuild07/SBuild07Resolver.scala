@@ -5,11 +5,8 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.net.URLClassLoader
-import java.util.ArrayList
-import java.util.{List => JList}
 import java.util.Properties
 
-import scala.collection.JavaConverters.asJavaCollectionConverter
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
@@ -83,11 +80,11 @@ class SBuild07Resolver(sbuildHomeDir: File) extends SBuildResolver {
     }
   }
 
-  override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, JList[String]] =
+  override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, Array[String]] =
     try {
       JEither.right(
-        new ArrayList(getExportedDependenciesMethod.invoke(resolverForProject(projectFile), exportName).
-          asInstanceOf[Seq[String]].asJavaCollection))
+        getExportedDependenciesMethod.invoke(resolverForProject(projectFile), exportName).
+          asInstanceOf[Seq[String]].toArray)
     } catch {
       case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
         debug(s"""Could not retrieve exported dependencies "${exportName}". Casue: ${e}""")
@@ -95,11 +92,11 @@ class SBuild07Resolver(sbuildHomeDir: File) extends SBuildResolver {
       case NonFatal(e) => JEither.left(e)
     }
 
-  override def resolve(projectFile: File, dependency: String): JEither[Throwable, JList[File]] = try {
+  override def resolve(projectFile: File, dependency: String): JEither[Throwable, Array[File]] = try {
     resolveMethod.
       invoke(resolverForProject(projectFile), dependency, nullProgressMonitorClass.newInstance.asInstanceOf[Object]).
       asInstanceOf[Try[Seq[File]]] match {
-        case Success(s) => JEither.right(new ArrayList(s.asJavaCollection))
+        case Success(s) => JEither.right(s.toArray)
         case Failure(e) => JEither.left(e)
       }
   } catch {

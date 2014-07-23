@@ -26,7 +26,7 @@ object Settings {
 
 import de.tototec.sbuild.eclipse.plugin.Settings._
 
-class Settings {
+class Settings() {
   def this(containerPath: IPath) = {
     this
     fromPath(containerPath)

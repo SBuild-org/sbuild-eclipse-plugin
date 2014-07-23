@@ -9,10 +9,12 @@ class SBuild(implicit _project: Project) {
   val version = "0.1.0.9000-" + java.text.MessageFormat.format("{0,date,yyyy-MM-dd-HH-mm-ss}", new java.util.Date())
   val scalaVersion = "2.10.4"
 
+  val resolverModule = Module("../org.sbuild.eclipse.resolver")
+
   val compileCp = s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
-    "../org.sbuild.eclipse.resolver/target/org.sbuild.eclipse.resolver-0.1.0.jar" ~
+    resolverModule.targetRef("jar-main") ~
     "mvn:org.osgi:org.osgi.core:4.1.0"
-//    "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100"
+  //    "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100"
 
   Target("phony:clean").evictCache exec {
     Path("target").deleteRecursive
@@ -34,8 +36,8 @@ class SBuild(implicit _project: Project) {
       "Bundle-Activator" -> s"${namespace}.internal.SBuild07ResolverActivator",
       "Export-Package" -> s"""${namespace};version="${version}"""",
       "Private-Package" -> s"""${namespace}.*""",
-      "Import-Package" -> s"""org.sbuild.eclipse.resolver;version="$${range;[==,=+)}",
-                              scala.*;version="$${range;[==,=+)}",
+      "Import-Package" -> s"""org.sbuild.eclipse.resolver;provide:=true,
+                              scala.*;provide:=true,
                               *""",
       "DynamicImport-Package" -> """!scala.tools.*,
                                     scala.*;version="[2.10,2.10.49)"""",

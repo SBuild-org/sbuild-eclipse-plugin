@@ -6,7 +6,7 @@ import org.sbuild._
 class SBuild(implicit _project: Project) {
 
   val namespace = "org.sbuild.eclipse.resolver"
-  val version = "0.1.0"
+  val version = "0.2.0"
 
   Target("phony:clean").evictCache exec {
     Path("target").deleteRecursive
