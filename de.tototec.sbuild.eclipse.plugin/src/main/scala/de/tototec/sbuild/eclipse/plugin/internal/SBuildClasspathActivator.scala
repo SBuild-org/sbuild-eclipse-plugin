@@ -12,6 +12,15 @@ import java.net.URLClassLoader
 import de.tototec.sbuild.eclipse.plugin.Classpathes
 import java.io.File
 import org.eclipse.core.resources.IResourceChangeEvent
+import org.sbuild.eclipse.resolver.SBuildResolver
+import org.osgi.util.tracker.ServiceTracker
+import org.osgi.framework.ServiceReference
+import java.util.{ List => JList }
+import org.sbuild.eclipse.resolver.{ Either => JEither }
+import org.osgi.framework.Bundle
+import scala.util.Failure
+import scala.util.Try
+import de.tototec.sbuild.eclipse.plugin.{ SBuildResolver => DummySBuildResolver }
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].
@@ -33,9 +42,11 @@ object SBuildClasspathActivator {
 class SBuildClasspathActivator extends BundleActivator {
 
   private[this] var _bundleContext: Option[BundleContext] = None
-  def bundleContext = _bundleContext.get
+  def bundleContext = _bundleContext
 
   private[this] var onStop: List[BundleContext => Unit] = Nil
+
+  @volatile private[this] var resolvers: Seq[SBuildResolver] = Seq()
 
   /**
    * Start of the bundle.
@@ -49,6 +60,24 @@ class SBuildClasspathActivator extends BundleActivator {
 
     de.tototec.sbuild.eclipse.plugin.debug("Starting bundle: " + bundleContext.getBundle)
 
+    resolvers ++= Seq(new DummySBuildResolver(new File("/usr/share/sbuild")))
+
+    val tracker = new ServiceTracker(bundleContext, classOf[SBuildResolver].getName, null) {
+      override def addingService(reference: ServiceReference): AnyRef = {
+        de.tototec.sbuild.eclipse.plugin.info("Registering detected SBuild Resover: " + reference)
+        val service = bundleContext.getService(reference).asInstanceOf[SBuildResolver]
+        synchronized { resolvers ++= Seq(service) }
+        service
+      }
+      override def removedService(reference: ServiceReference, service: AnyRef): Unit = {
+        de.tototec.sbuild.eclipse.plugin.info("Unregistering SBuild Resover: " + reference)
+        bundleContext.ungetService(reference)
+        synchronized { resolvers = resolvers.filter(service.eq) }
+      }
+    }
+    tracker.open();
+    onStop ::= { _ => tracker.close() }
+
     // Register project change listener
     val workspaceProjectChangeListener = new WorkspaceProjectChangeListener()
     val workspace = ResourcesPlugin.getWorkspace
@@ -60,36 +89,27 @@ class SBuildClasspathActivator extends BundleActivator {
   /** Stop of the bundle. */
   override def stop(bundleContext: BundleContext) = onStop.foreach { f => f(bundleContext) }
 
-  def log: ILog = Platform.getLog(bundleContext.getBundle)
+  def scanAndStartExtensionBundles(context: BundleContext): Unit = {
+    val bundlesToStart = context.getBundles().filter { bundle =>
+      bundle.getState() != Bundle.ACTIVE &&
+        Option(bundle.getHeaders().get("SBuild-Service")).isDefined
+    }
+    bundlesToStart.foreach { bundle =>
+      de.tototec.sbuild.eclipse.plugin.debug("About to manually start bundle: " + bundle)
+      Try { bundle.start() } match {
+        case Failure(e) =>
+          de.tototec.sbuild.eclipse.plugin.error("Couldn't start bundle: " + bundle)
+        case _ =>
+      }
+    }
+  }
+
+  def log: Option[ILog] = bundleContext.map(ctx => Platform.getLog(ctx.getBundle))
 
   def log(status: Int, msg: String, cause: Throwable = null) {
-    log.log(new Status(status, bundleContext.getBundle.getSymbolicName, msg, cause))
+    log.map(_.log(new Status(status, bundleContext.get.getBundle.getSymbolicName, msg, cause)))
   }
 
-  case class CachedClassLoader(sbuildHomeDir: File, classLoader: URLClassLoader)
-  
-  private[this] var sbuildClassLoader: Option[CachedClassLoader] = None
-
-  def sbuildEmbeddedClassLoader(sbuildHomeDir: File): ClassLoader = {
-    sbuildClassLoader match {
-      case Some(CachedClassLoader(homeDir, classLoader)) if homeDir.equals(sbuildHomeDir) =>
-        de.tototec.sbuild.eclipse.plugin.debug("Using cached SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
-        classLoader
-
-      case _ =>
-        sbuildClassLoader.map { cache =>
-          de.tototec.sbuild.eclipse.plugin.debug("Dropping cached classloader for SBuild Embedded: " + cache.classLoader.getURLs().toSeq)
-        }
-
-        val embeddedClasspath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
-        // TODO: check for changed files, if changed, than drop cached classloader
-        val classLoader = new URLClassLoader(embeddedClasspath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
-        sbuildClassLoader = Some(CachedClassLoader(sbuildHomeDir, classLoader))
-        de.tototec.sbuild.eclipse.plugin.debug("Created and cached new SBuild Embedded classloader: " + classLoader.getURLs().toSeq)
-
-        classLoader
-    }
-
-  }
+  def sbuildResolvers: Seq[SBuildResolver] = resolvers
 
 }

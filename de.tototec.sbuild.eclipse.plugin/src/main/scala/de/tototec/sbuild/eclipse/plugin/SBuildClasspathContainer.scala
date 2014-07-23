@@ -1,34 +1,30 @@
 package de.tototec.sbuild.eclipse.plugin
 
 import java.io.File
+import java.net.URI
+
 import scala.collection.JavaConversions._
-import scala.xml.XML
+import scala.collection.JavaConverters._
 import scala.xml.factory.XMLLoader
-import org.eclipse.core.resources.ProjectScope
-import org.eclipse.core.resources.ResourcesPlugin
+
+import org.eclipse.core.resources.IFile
+import org.eclipse.core.resources.IMarker
+import org.eclipse.core.resources.IResource
 import org.eclipse.core.runtime.IPath
 import org.eclipse.core.runtime.Path
-import org.eclipse.jdt.core.IJavaModel
-import org.eclipse.jdt.core.IJavaProject
-import org.eclipse.jdt.core.IClasspathContainer
-import org.eclipse.jdt.core.IClasspathEntry
-import org.eclipse.jdt.core.JavaCore
-import org.eclipse.core.runtime.NullProgressMonitor
-import org.eclipse.jdt.core.JavaModelException
-import scala.util.Failure
-import scala.util.Success
-import org.eclipse.core.resources.IResource
 import org.eclipse.core.runtime.IProgressMonitor
-import scala.util.Try
-import org.eclipse.core.resources.IMarker
-import scala.collection.JavaConverters._
-import org.eclipse.core.runtime.jobs.Job
 import org.eclipse.core.runtime.IStatus
 import org.eclipse.core.runtime.Status
+import org.eclipse.core.runtime.jobs.Job
+import org.eclipse.jdt.core.IClasspathContainer
+import org.eclipse.jdt.core.IClasspathEntry
+import org.eclipse.jdt.core.IJavaModel
 import org.eclipse.jdt.core.IJavaModelMarker
-import org.eclipse.core.resources.IFile
-import java.net.URI
+import org.eclipse.jdt.core.IJavaProject
+import org.eclipse.jdt.core.JavaCore
 import org.sbuild.eclipse.resolver.{ Either => JEither }
+
+import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
@@ -242,26 +238,30 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     // read the project
 
-    val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
-    if (sbuildHomePath == null) {
-      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
-    }
-    val sbuildHomeDir = sbuildHomePath.toFile
+    //    val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
+    //    if (sbuildHomePath == null) {
+    //      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
+    //    }
+    //    val sbuildHomeDir = sbuildHomePath.toFile
 
     info(s"${projectName}: Loading project...")
-    val resolver = new SBuildResolver(sbuildHomeDir)
-
-    try {
-      resolver.prepareProject(buildfile, keepFailed = true).map { error =>
-        debug(s"${projectName}: Could not find usable resolver", error)
-        val msg = s"Could not find usable resolver. Cause: ${error.getLocalizedMessage()}"
+    val resolvers = SBuildClasspathActivator.activator.sbuildResolvers.toStream.
+      map(r => r -> r.prepareProject(buildfile, /* keepFailed */ false))
+    val resolver = resolvers.find { case (resolver, errorOption) => errorOption.isEmpty() } match {
+      case Some((resolver, errorOption)) => resolver
+      case None =>
+        val errors = resolvers.map { case (resolver, errorOption) => s"${resolver.getClass().getName()} - ${errorOption.get}" }
+        debug(s"${projectName}: Could not find usable resolver out of ${resolvers.size} resolvers.")
+        val msg = s"Could not find usable resolver. Causes:\n - ${errors.mkString("\n - ")}"
         return ClasspathInfo(
           classpathEntries = Seq(),
           relatedProjects = Set(),
           resolveIssues = Seq(ResolveIssue.ProjectIssue(msg)),
           includedFiles = Seq())
-      }
+    }
 
+    // This try block pairs with a finally, in which we ensure we release the project again
+    try {
       // Experimental: Determine included resources via exported dependencies "sbuild.project.includes"
       val includedFiles = resolver.exportedDependencies(buildfile, "sbuild.project.includes").asScala match {
         case Right(includes) =>

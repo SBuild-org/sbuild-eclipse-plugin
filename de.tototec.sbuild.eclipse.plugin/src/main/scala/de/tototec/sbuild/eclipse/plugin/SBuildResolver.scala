@@ -25,8 +25,6 @@ class SBuildResolver(sbuildHomeDir: File) extends ISBuildResolver {
     resolveMethod: Method,
     sbuildEmbedded: Any)
 
-  private[this] def debug(msg: => String): Unit = {}
-
   private[this] val state = {
     val embeddedClasspath = Classpathes.fromFile(new File(sbuildHomeDir, "lib/classpath.properties")).embeddedClasspath
     val classloader = new URLClassLoader(embeddedClasspath.map { path => new File(path).toURI.toURL }, getClass.getClassLoader)
@@ -75,7 +73,10 @@ class SBuildResolver(sbuildHomeDir: File) extends ISBuildResolver {
     cache.get(projectFile) match {
       case Some(Cached(timestamp, file, resolver)) => resolver
       case _ =>
-        Try(getEmbeddedResolverMethod.invoke(state.sbuildEmbedded, projectFile, new Properties()))
+        Try(getEmbeddedResolverMethod.invoke(state.sbuildEmbedded, projectFile, new Properties())) recoverWith {
+          case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
+            Failure(e.getCause())
+        }
     }
   }
 
@@ -120,7 +121,7 @@ class SBuildResolver(sbuildHomeDir: File) extends ISBuildResolver {
           asInstanceOf[Seq[String]].toArray)
     } catch {
       case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
-        debug(s"""Could not retrieve exported dependencies "${exportName}". Casue: ${e}""")
+        //        debug(s"""Could not retrieve exported dependencies "${exportName}". Casue: ${e}""")
         Left(e.getCause())
       case NonFatal(e) => Left(e)
     }
@@ -135,8 +136,11 @@ class SBuildResolver(sbuildHomeDir: File) extends ISBuildResolver {
           case Failure(e) => Left(e)
         }
     } catch {
+      case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
+        //        debug(s"Could not resolve dependency: ${dependency}", e)
+        Left(e.getCause())
       case NonFatal(e) =>
-        debug(s"""Could not resolve depenendce "${dependency}". Cause: ${e}""")
+        //        debug(s"Could not resolve dependency: ${dependency}", e)
         Left(e)
     }
   }
