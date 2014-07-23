@@ -16,19 +16,21 @@ object WorkspaceProjectAliases {
   }
 
   def read(project: IJavaProject, node: String): Map[String, String] = {
+    val projectName = project.getProject.getName
     val projectScope = new ProjectScope(project.getProject)
     projectScope.getNode(SBuildPreferencesNode) match {
       case null =>
-        debug("Could not access prefs node: " + SBuildPreferencesNode)
+        debug(s"${projectName}: Could not access prefs node: ${SBuildPreferencesNode}")
         Map()
       case prefs =>
         prefs.node(node) match {
           case null =>
-            debug("Could not access prefs node: " + node)
+            debug(s"${projectName}: Could not access prefs node: ${node}")
             Map()
           case prefs =>
             val keys = prefs.keys
-            debug("Found aliases (" + node + ") in prefs for the following dependencies: " + keys.mkString(", "))
+            if (!keys.isEmpty)
+              debug(s"${projectName}: Found aliases (${node}) in prefs for the following dependencies: ${keys.mkString(", ")}")
             keys.map {
               name => (name -> prefs.get(name, ""))
             }.filter {

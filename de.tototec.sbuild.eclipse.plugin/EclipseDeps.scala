@@ -11,9 +11,9 @@ class SBuild(implicit _project: Project) {
     s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
       // sbuildCoreJar ~
       // sbuildRunnerJar ~
-      "mvn:org.osgi:org.osgi.core:4.2.0" ~
-      "mvn:org.osgi:org.osgi.compendium:4.2.0" ~
-      //      "mvn:org.eclipse:osgi:3.3.0-v20070530" ~
+      //      "mvn:org.osgi:org.osgi.core:4.2.0" ~
+      //      "mvn:org.osgi:org.osgi.compendium:4.2.0" ~
+      "mvn:org.eclipse:osgi:3.3.0-v20070530" ~
       "mvn:org.eclipse.core:runtime:3.3.100-v20070530" ~
       "mvn:org.eclipse.core:resources:3.3.0-v20070604" ~
       "mvn:org.eclipse.core:jobs:3.3.0-v20070423" ~

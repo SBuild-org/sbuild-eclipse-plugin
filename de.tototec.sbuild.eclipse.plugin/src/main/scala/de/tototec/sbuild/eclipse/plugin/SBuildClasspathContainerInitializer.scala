@@ -10,7 +10,7 @@ import org.eclipse.core.runtime.NullProgressMonitor
 class SBuildClasspathContainerInitializer extends ClasspathContainerInitializer {
 
   override def initialize(containerPath: IPath, project: IJavaProject): Unit = {
-    debug("intialize(containerPath=" + containerPath + ", project=" + project + ")")
+    debug(s"intialize(containerPath=${containerPath},project=${project.getProject.getName})")
     setClasspathContainer(containerPath, project)
   }
 
@@ -18,7 +18,7 @@ class SBuildClasspathContainerInitializer extends ClasspathContainerInitializer 
 
   override def requestClasspathContainerUpdate(containerPath: IPath, project: IJavaProject,
                                                containerSuggestion: IClasspathContainer) {
-    debug("requestClasspathContainerUpdate(containerPath=" + containerPath + ", project=" + project + ")")
+    debug(s"requestClasspathContainerUpdate(containerPath=${containerPath},project=${project.getProject.getName})")
     setClasspathContainer(containerPath, project)
   }
 

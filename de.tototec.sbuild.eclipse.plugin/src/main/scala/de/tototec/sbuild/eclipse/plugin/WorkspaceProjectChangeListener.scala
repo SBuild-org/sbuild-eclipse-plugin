@@ -90,8 +90,10 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
       val projectNames = projects.map { _.getName }
 
-      debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
-      debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
+      if (!projects.isEmpty)
+        debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
+      if (!changedResources.isEmpty)
+        debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
