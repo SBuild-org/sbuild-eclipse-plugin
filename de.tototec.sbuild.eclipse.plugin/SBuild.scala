@@ -12,7 +12,8 @@ class SBuild(implicit _project: Project) {
   // val version = "0.4.3"
   val eclipseJar = s"target/${namespace}_${version}.jar"
 
-  val scalaVersion = "2.10.1"
+  val scalaVersion = "2.11.2"
+  val scalaBinVersion = "2.11"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
@@ -47,10 +48,12 @@ class SBuild(implicit _project: Project) {
       "mvn:de.tototec:de.tototec.cmdoption:0.2.1" ~
       "mvn:org.slf4j:slf4j-api:1.7.1" ~
       resolverModule.targetRef("jar-main")
+      
 
   val testCp =
     compileCp ~
-      "mvn:org.scalatest:scalatest_2.10:2.0.RC2"
+      s"mvn:org.scalatest:scalatest_${scalaBinVersion}:2.2.0" ~
+      s"mvn:org.scala-lang.modules:scala-xml_${scalaBinVersion}:1.0.2"     
 
   ExportDependencies("eclipse.classpath", testCp)
 

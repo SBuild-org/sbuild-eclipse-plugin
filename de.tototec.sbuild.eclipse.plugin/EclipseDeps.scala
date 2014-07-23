@@ -3,7 +3,7 @@ import de.tototec.sbuild._
 @version("0.7.1")
 class SBuild(implicit _project: Project) {
 
-  val scalaVersion = "2.10.1"
+  val scalaVersion = "2.11.2"
 
   val eclipse34zip = "http://archive.eclipse.org/eclipse/downloads/drops/R-3.4-200806172000/eclipse-RCP-3.4-win32-x86_64.zip"
 
@@ -35,7 +35,7 @@ class SBuild(implicit _project: Project) {
 
   val testCp =
     compileCp ~
-      "mvn:org.scalatest:scalatest_2.10:2.0.RC2"
+      "mvn:org.scalatest:scalatest_2.11:2.2.0"
 
   ExportDependencies("eclipse.classpath", testCp)
 

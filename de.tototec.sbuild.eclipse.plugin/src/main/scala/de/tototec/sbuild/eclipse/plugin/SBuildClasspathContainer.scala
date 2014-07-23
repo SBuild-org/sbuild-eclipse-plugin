@@ -5,7 +5,6 @@ import java.net.URI
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import scala.xml.factory.XMLLoader
 
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
