@@ -1,26 +1,24 @@
 package de.tototec.sbuild.eclipse.plugin.internal
 
+import java.util.{List => JList}
+
+import scala.util.Failure
+import scala.util.Try
+
+import org.eclipse.core.resources.IResourceChangeEvent
 import org.eclipse.core.resources.IWorkspace
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.ILog
 import org.eclipse.core.runtime.Platform
 import org.eclipse.core.runtime.Status
+import org.osgi.framework.Bundle
 import org.osgi.framework.BundleActivator
 import org.osgi.framework.BundleContext
-import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
-import java.net.URLClassLoader
-import de.tototec.sbuild.eclipse.plugin.Classpathes
-import java.io.File
-import org.eclipse.core.resources.IResourceChangeEvent
-import org.sbuild.eclipse.resolver.SBuildResolver
-import org.osgi.util.tracker.ServiceTracker
 import org.osgi.framework.ServiceReference
-import java.util.{ List => JList }
-import org.sbuild.eclipse.resolver.{ Either => JEither }
-import org.osgi.framework.Bundle
-import scala.util.Failure
-import scala.util.Try
-import de.tototec.sbuild.eclipse.plugin.{ SBuildResolver => DummySBuildResolver }
+import org.osgi.util.tracker.ServiceTracker
+import org.sbuild.eclipse.resolver.SBuildResolver
+
+import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].

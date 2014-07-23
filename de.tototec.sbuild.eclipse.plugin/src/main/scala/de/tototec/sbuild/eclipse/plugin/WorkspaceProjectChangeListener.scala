@@ -20,7 +20,7 @@ import org.eclipse.core.resources.IResourceDeltaVisitor
 import org.eclipse.ui.internal.Workbench
 import org.eclipse.core.runtime.Platform
 
-class WorkspaceProjectChangeListener extends IResourceChangeListener {
+class WorkspaceProjectChangeListener() extends IResourceChangeListener {
 
   override def resourceChanged(event: IResourceChangeEvent): Unit = try {
     event.getType match {
