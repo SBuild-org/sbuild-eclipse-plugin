@@ -90,10 +90,12 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
 
       val projectNames = projects.map { _.getName }
 
-      if (!projects.isEmpty)
-        debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
-      if (!changedResources.isEmpty)
-        debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
+      if (false /* no debug */ ) {
+        if (!projects.isEmpty)
+          debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
+        if (!changedResources.isEmpty)
+          debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
+      }
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
@@ -103,7 +105,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       }
 
       if (!projectsToUpdate.isEmpty)
-        debug("Affected SBuild projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
+        debug("Changes affect SBuild projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
 
       projectsToUpdate
     }

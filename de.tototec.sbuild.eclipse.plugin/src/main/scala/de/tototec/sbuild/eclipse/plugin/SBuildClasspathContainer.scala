@@ -28,7 +28,6 @@ import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.IJavaModelMarker
 import org.eclipse.core.resources.IFile
 import java.net.URI
-import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
@@ -235,32 +234,42 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     // read the project
 
-    //    val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
-    //    if (sbuildHomePath == null) {
-    //      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
-    //    }
-    //    val sbuildHomeDir = sbuildHomePath.toFile
+    val sbuildHomePath: IPath = JavaCore.getClasspathVariable(SBuildClasspathContainer.SBuildHomeVariableName)
+    if (sbuildHomePath == null) {
+      throw new RuntimeException("Classpath variable 'SBUILD_HOME' not defined.")
+    }
+    val sbuildHomeDir = sbuildHomePath.toFile
 
     info(s"${projectName}: Loading project...")
-    val resolver = SBuildClasspathActivator.activator.sbuildResolver
+    val resolver = new SBuildResolver(sbuildHomeDir)
+        try {
+    resolver.prepareProject(buildfile, keepFailed = true).map { error =>
+      debug(s"${projectName}: Could not find usable resolver", error)
+      val msg = s"Could not find usable resolver. Cause: ${error.getLocalizedMessage()}"
+      return ClasspathInfo(
+        classpathEntries = Seq(),
+        relatedProjects = Set(),
+        resolveIssues = Seq(ResolveIssue.ProjectIssue(msg)),
+        includedFiles = Seq())
+    }
 
     // Experimental: Determine included resources via exported dependencies "sbuild.project.includes"
     val includedFiles = resolver.exportedDependencies(buildfile, "sbuild.project.includes") match {
-      case either if either.isRight() =>
-        val includedFiles = either.right().toSeq
+      case Right(includes) =>
+        val includedFiles = includes.toSeq
         if (!includedFiles.isEmpty)
           debug(s"${projectName}: Included files: ${includedFiles}")
         includedFiles
-      case either if either.isLeft() =>
-        debug(s"${projectName}: Could not evaluate included files. Cause: ${either.left().getLocalizedMessage()}")
+      case Left(e) =>
+        debug(s"${projectName}: Could not evaluate included files", e)
         Seq()
     }
 
     val deps = resolver.exportedDependencies(buildfile, settings.exportedClasspath) match {
-      case either if either.isRight() => either.right().toSeq
-      case either if either.isLeft() =>
-        debug(s"${projectName}: Could not evaluate exported classpath. Cause: ${either.left().getLocalizedMessage()}")
-        val error = s"Could not access exported dependency ${settings.exportedClasspath}. Cause: ${either.left().getLocalizedMessage()}"
+      case Right(d) => d
+      case Left(e) =>
+        debug(s"${projectName}: Could not evaluate exported classpath", e)
+        val error = s"Could not access exported dependency ${settings.exportedClasspath}. Cause: ${e.getLocalizedMessage()}"
         return ClasspathInfo(
           classpathEntries = Seq(),
           relatedProjects = Set(),
@@ -277,12 +286,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     /** Resolve through embedded SBuild. Slurping all SBuild errors, but logging them. */
     def resolveViaSBuild(dep: String): Either[String, Seq[IClasspathEntry]] =
       resolver.resolve(buildfile, dep) match {
-        case either if either.isLeft() =>
-          val e = either.left()
+        case Left(e) =>
           warn(s"${projectName}: Could not resolve dependency: ${dep}", e)
           Left(s"""Could not resolve dependency "${dep}" of project: ${projectName}. """ + e.getLocalizedMessage())
-        case either if either.isRight() =>
-          val files = either.right().toSeq
+        case Right(filesArray) =>
+          val files = filesArray.toSeq
           debug(s"""${projectName}: Resolved dependency "${dep}" to "${files.mkString(", ")}"""")
 
           var singleSource: Option[File] = None
@@ -292,8 +300,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             if (files.size == 1) {
               // resolve sources via "source" scheme handler
               resolver.resolve(buildfile, "source:" + dep) match {
-                case either if either.isRight() =>
-                  val sources = either.right().toSeq
+                case Right(sources) =>
                   if (sources.isEmpty) {
                     debug(s"""${projectName}: Empty sources list for: ${dep}""")
                   } else {
@@ -301,8 +308,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
                     debug(s"""${projectName}: Attaching sources for "${dep}": ${sources.head}""")
                     singleSource = Some(sources.head)
                   }
-                case either if either.isLeft() =>
-                  debug(s"${projectName}: Could not resolve sources for: ${dep}", either.left())
+                case Left(e) =>
+                  debug(s"${projectName}: Could not resolve sources for: ${dep}", e)
               }
             } else debug(s"""${projectName}: Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
           }
@@ -311,8 +318,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             if (files.size == 1) {
               // resolve javadoc via "javadoc" scheme handler
               resolver.resolve(buildfile, "javadoc:" + dep) match {
-                case either if either.isRight() =>
-                  val javadoc = either.right().toSeq
+                case Right(javadoc) =>
                   if (javadoc.isEmpty) {
                     debug(s"""${projectName}: Empty javadoc list for: ${dep}""")
                   } else {
@@ -320,8 +326,8 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
                     debug(s"""${projectName}: Attaching javadoc for "${dep}": ${javadoc.head}""")
                     singleSource = Some(javadoc.head)
                   }
-                case either if either.isLeft() =>
-                  debug(s"""${projectName}: Could not resolve javadoc for: "${dep}"""", either.left())
+                case Left(e) =>
+                  debug(s"""${projectName}: Could not resolve javadoc for: "${dep}"""", e)
               }
             } else debug(s"""${projectName}: Skip resolve of javadoc for "${dep}" as they does not resolved to exactly one file.""")
           }
@@ -380,13 +386,18 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       relatedProjects = relatedWorkspaceProjectNames,
       resolveIssues = issues,
       includedFiles = includedFiles)
+        } finally {
+          resolver.releaseProject(buildfile)
+        }
   }
 
   def updateClasspath(monitor: IProgressMonitor): Unit = try {
     //    classpathEntries = None
     val newContainer = new SBuildClasspathContainer(this.getPath, this.project)
     monitor.subTask("Updating SBuild library container")
-    debug("Updating classpath (by re-setting classpath container)")
+    // Experimental: trigger resolver 
+    newContainer.getClasspathEntries()
+    debug(s"${projectName}: Updating classpath (by re-setting classpath container)")
     JavaCore.setClasspathContainer(path, Array(project), Array(newContainer), monitor)
   } finally {
     monitor.done()

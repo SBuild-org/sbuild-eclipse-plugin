@@ -87,8 +87,8 @@ class SBuild(implicit _project: Project) {
                              org.sbuild.eclipse.resolver;provide:=true,
                              scala.*;provide:=true,
                              *""",
-      //      "DynamicImport-Package" -> """!scala.tools.*,
-      //    		scala.*;version="[2.10,2.10.49)"""",
+      "DynamicImport-Package" -> """!scala.tools.*,
+                                    scala.*;version="[2.10,2.10.49)"""",
       "Include-Resource" -> """src/main/resources""",
       "-removeheaders" -> "Include-Resource",
       "Bundle-RequiredExecutionEnvironment" -> "JavaSE-1.6"

@@ -31,7 +31,7 @@ class SBuild(implicit _project: Project) {
       "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
       "mvn:de.tototec:de.tototec.cmdoption:0.2.1" ~
       "mvn:org.slf4j:slf4j-api:1.7.1" ~
-      "../org.sbuild.eclipse.resolver/target/org.sbuild.eclipse.resolver-0.1.0.jar"
+      "../org.sbuild.eclipse.resolver/target/org.sbuild.eclipse.resolver-0.2.0.jar"
 
   val testCp =
     compileCp ~
