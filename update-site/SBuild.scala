@@ -19,6 +19,7 @@ class SBuild(implicit _project: Project) {
 
   val pluginModules = Modules("../org.sbuild.eclipse.resolver",
     "../org.sbuild.eclipse.resolver.sbuild07",
+    "../org.sbuild.eclipse.resolver.sbuild08",
     "../de.tototec.sbuild.eclipse.plugin"
   )
 
