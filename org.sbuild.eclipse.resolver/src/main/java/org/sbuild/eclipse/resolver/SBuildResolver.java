@@ -16,4 +16,8 @@ public interface SBuildResolver {
 
 	Either<Throwable, File[]> resolve(File projectFile, String dependency);
 
+	Optional<Throwable> prepareProject(File projectFile, boolean keepFailed);
+
+	void releaseProject(File projectFile);
+
 }

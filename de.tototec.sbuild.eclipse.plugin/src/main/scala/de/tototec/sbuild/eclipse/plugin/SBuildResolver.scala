@@ -6,13 +6,15 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.net.URLClassLoader
 import java.util.Properties
-
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import scala.util.control.NonFatal
+import org.sbuild.eclipse.resolver.{ SBuildResolver => ISBuildResolver }
+import org.sbuild.eclipse.resolver.{ Either => JEither }
+import org.sbuild.eclipse.resolver.Optional
 
-class SBuildResolver(sbuildHomeDir: File) {
+class SBuildResolver(sbuildHomeDir: File) extends ISBuildResolver {
 
   case class State(
     sbuildEmbeddedClassCtr: Constructor[_],
@@ -77,9 +79,9 @@ class SBuildResolver(sbuildHomeDir: File) {
     }
   }
 
-  def prepareProject(projectFile: File, keepFailed: Boolean): Option[Throwable] = {
+  def prepareProject(projectFile: File, keepFailed: Boolean): Optional[Throwable] = {
     cache.get(projectFile) match {
-      case Some(_) => None
+      case Some(_) => Optional.none()
       case None =>
         val resolver = resolverForProject(projectFile)
         if (resolver.isSuccess || keepFailed)
@@ -88,8 +90,8 @@ class SBuildResolver(sbuildHomeDir: File) {
           cache += projectFile -> Cached(System.currentTimeMillis(), projectFile, resolver)
         }
         resolver match {
-          case Success(_) => None
-          case Failure(e) => Some(e)
+          case Success(_) => Optional.none()
+          case Failure(e) => Optional.some(e)
         }
     }
   }
@@ -103,12 +105,15 @@ class SBuildResolver(sbuildHomeDir: File) {
     }
   }
 
-  private[this] def withResolver[T](projectFile: File)(f: Any => Either[Throwable, T]): Either[Throwable, T] = resolverForProject(projectFile) match {
-    case Success(resolver) => f(resolver)
-    case Failure(e) => Left(e)
+  private[this] def withResolver[T](projectFile: File)(f: Any => Either[Throwable, T]): JEither[Throwable, T] = resolverForProject(projectFile) match {
+    case Success(resolver) => f(resolver) match {
+      case Left(e) => JEither.left(e)
+      case Right(r) => JEither.right(r)
+    }
+    case Failure(e) => JEither.left(e)
   }
 
-  def exportedDependencies(projectFile: File, exportName: String): Either[Throwable, Array[String]] = withResolver(projectFile) { resolver =>
+  override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, Array[String]] = withResolver(projectFile) { resolver =>
     try {
       Right(
         getExportedDependenciesMethod.invoke(resolver, exportName).
@@ -121,7 +126,7 @@ class SBuildResolver(sbuildHomeDir: File) {
     }
   }
 
-  def resolve(projectFile: File, dependency: String): Either[Throwable, Array[File]] = withResolver(projectFile) { resolver =>
+  override def resolve(projectFile: File, dependency: String): JEither[Throwable, Array[File]] = withResolver(projectFile) { resolver =>
     try {
       resolveMethod.
         invoke(resolver, dependency, nullProgressMonitorClass.newInstance.asInstanceOf[Object]).

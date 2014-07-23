@@ -28,6 +28,7 @@ import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.IJavaModelMarker
 import org.eclipse.core.resources.IFile
 import java.net.URI
+import org.sbuild.eclipse.resolver.{ Either => JEither }
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"
@@ -226,6 +227,13 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
                            resolveIssues: Seq[ResolveIssue],
                            includedFiles: Seq[String])
 
+  implicit class EitherSupport[L, R](either: JEither[L, R]) {
+    def asScala: Either[L, R] = either match {
+      case l if l.isLeft() => Left(l.left())
+      case r if r.isRight() => Right(r.right())
+    }
+  }
+
   /**
    * @return A tuple of 1. The classpath entries to use, 2. All potentially related Workspace projects
    */
@@ -242,153 +250,154 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
 
     info(s"${projectName}: Loading project...")
     val resolver = new SBuildResolver(sbuildHomeDir)
-        try {
-    resolver.prepareProject(buildfile, keepFailed = true).map { error =>
-      debug(s"${projectName}: Could not find usable resolver", error)
-      val msg = s"Could not find usable resolver. Cause: ${error.getLocalizedMessage()}"
-      return ClasspathInfo(
-        classpathEntries = Seq(),
-        relatedProjects = Set(),
-        resolveIssues = Seq(ResolveIssue.ProjectIssue(msg)),
-        includedFiles = Seq())
-    }
 
-    // Experimental: Determine included resources via exported dependencies "sbuild.project.includes"
-    val includedFiles = resolver.exportedDependencies(buildfile, "sbuild.project.includes") match {
-      case Right(includes) =>
-        val includedFiles = includes.toSeq
-        if (!includedFiles.isEmpty)
-          debug(s"${projectName}: Included files: ${includedFiles}")
-        includedFiles
-      case Left(e) =>
-        debug(s"${projectName}: Could not evaluate included files", e)
-        Seq()
-    }
-
-    val deps = resolver.exportedDependencies(buildfile, settings.exportedClasspath) match {
-      case Right(d) => d
-      case Left(e) =>
-        debug(s"${projectName}: Could not evaluate exported classpath", e)
-        val error = s"Could not access exported dependency ${settings.exportedClasspath}. Cause: ${e.getLocalizedMessage()}"
+    try {
+      resolver.prepareProject(buildfile, keepFailed = true).map { error =>
+        debug(s"${projectName}: Could not find usable resolver", error)
+        val msg = s"Could not find usable resolver. Cause: ${error.getLocalizedMessage()}"
         return ClasspathInfo(
           classpathEntries = Seq(),
           relatedProjects = Set(),
-          resolveIssues = Seq(ResolveIssue.ProjectIssue(error)),
-          includedFiles = includedFiles)
-    }
-    debug("Exported dependencies: " + deps.mkString(","))
+          resolveIssues = Seq(ResolveIssue.ProjectIssue(msg)),
+          includedFiles = Seq())
+      }
 
-    val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
-
-    val aliases = WorkspaceProjectAliases(project)
-    debug(s"${projectName}: Using workspaceProjectAliases: ${aliases}")
-
-    /** Resolve through embedded SBuild. Slurping all SBuild errors, but logging them. */
-    def resolveViaSBuild(dep: String): Either[String, Seq[IClasspathEntry]] =
-      resolver.resolve(buildfile, dep) match {
+      // Experimental: Determine included resources via exported dependencies "sbuild.project.includes"
+      val includedFiles = resolver.exportedDependencies(buildfile, "sbuild.project.includes").asScala match {
+        case Right(includes) =>
+          val includedFiles = includes.toSeq
+          if (!includedFiles.isEmpty)
+            debug(s"${projectName}: Included files: ${includedFiles}")
+          includedFiles
         case Left(e) =>
-          warn(s"${projectName}: Could not resolve dependency: ${dep}", e)
-          Left(s"""Could not resolve dependency "${dep}" of project: ${projectName}. """ + e.getLocalizedMessage())
-        case Right(filesArray) =>
-          val files = filesArray.toSeq
-          debug(s"""${projectName}: Resolved dependency "${dep}" to "${files.mkString(", ")}"""")
-
-          var singleSource: Option[File] = None
-          var singleJavadoc: Option[File] = None
-
-          if (settings.resolveSources) {
-            if (files.size == 1) {
-              // resolve sources via "source" scheme handler
-              resolver.resolve(buildfile, "source:" + dep) match {
-                case Right(sources) =>
-                  if (sources.isEmpty) {
-                    debug(s"""${projectName}: Empty sources list for: ${dep}""")
-                  } else {
-                    if (sources.size > 1) debug(s"""${projectName}: Just using the first file of resolved sources for dep "${dep}" but multiple files were given: ${sources.mkString(", ")}""")
-                    debug(s"""${projectName}: Attaching sources for "${dep}": ${sources.head}""")
-                    singleSource = Some(sources.head)
-                  }
-                case Left(e) =>
-                  debug(s"${projectName}: Could not resolve sources for: ${dep}", e)
-              }
-            } else debug(s"""${projectName}: Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
-          }
-
-          if (settings.resolveJavadoc) {
-            if (files.size == 1) {
-              // resolve javadoc via "javadoc" scheme handler
-              resolver.resolve(buildfile, "javadoc:" + dep) match {
-                case Right(javadoc) =>
-                  if (javadoc.isEmpty) {
-                    debug(s"""${projectName}: Empty javadoc list for: ${dep}""")
-                  } else {
-                    if (javadoc.size > 1) debug(s"""${projectName}: Just using the first file of resolved javadoc for dep "${dep}" but multiple files were given: ${javadoc.mkString(", ")}""")
-                    debug(s"""${projectName}: Attaching javadoc for "${dep}": ${javadoc.head}""")
-                    singleSource = Some(javadoc.head)
-                  }
-                case Left(e) =>
-                  debug(s"""${projectName}: Could not resolve javadoc for: "${dep}"""", e)
-              }
-            } else debug(s"""${projectName}: Skip resolve of javadoc for "${dep}" as they does not resolved to exactly one file.""")
-          }
-
-          Right(files.map { file =>
-            // IDEA: refresh the resource
-            //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
-            //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
-            //            }
-            val sourcePath = singleSource match {
-              case Some(file) => new Path(file.getAbsolutePath())
-              case _ => null
-            }
-            val javadocPath = singleJavadoc match {
-              case Some(file) => new Path(file.getAbsolutePath())
-              case _ => null
-            }
-
-            JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, javadocPath)
-          })
+          debug(s"${projectName}: Could not evaluate included files", e)
+          Seq()
       }
 
-    var relatedWorkspaceProjectNames: Set[String] = Set()
-    var issues: Seq[ResolveIssue] = Seq()
-
-    // We will now check, if some of these targets can be resolved from workspace.
-    // - If so, we instead add an classpath entry with the existing and open workspace project
-    // - Else, we resolve the depenency and add the result to the classpath
-    val classpathEntries: Seq[IClasspathEntry] =
-      deps.flatMap { dep =>
-        aliases.getAliasForDependency(dep) match {
-          case None => resolveViaSBuild(dep) match {
-            case Right(cpe) => cpe
-            case Left(error) =>
-              issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
-              Seq()
-          }
-          case Some(alias) =>
-            relatedWorkspaceProjectNames += alias
-            javaModel.getJavaProject(alias) match {
-              case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
-                debug(s"${projectName}: Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
-                Seq(JavaCore.newProjectEntry(javaProject.getPath))
-              case _ => resolveViaSBuild(dep) match {
-                case Right(cpe) => cpe
-                case Left(error) =>
-                  issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
-                  Seq()
-              }
-            }
-        }
+      val deps = resolver.exportedDependencies(buildfile, settings.exportedClasspath).asScala match {
+        case Right(d) => d
+        case Left(e) =>
+          debug(s"${projectName}: Could not evaluate exported classpath", e)
+          val error = s"Could not access exported dependency ${settings.exportedClasspath}. Cause: ${e.getLocalizedMessage()}"
+          return ClasspathInfo(
+            classpathEntries = Seq(),
+            relatedProjects = Set(),
+            resolveIssues = Seq(ResolveIssue.ProjectIssue(error)),
+            includedFiles = includedFiles)
       }
+      debug("Exported dependencies: " + deps.mkString(","))
 
-    ClasspathInfo(
-      classpathEntries = classpathEntries.distinct,
-      relatedProjects = relatedWorkspaceProjectNames,
-      resolveIssues = issues,
-      includedFiles = includedFiles)
-        } finally {
-          resolver.releaseProject(buildfile)
+      val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
+
+      val aliases = WorkspaceProjectAliases(project)
+      debug(s"${projectName}: Using workspaceProjectAliases: ${aliases}")
+
+      /** Resolve through embedded SBuild. Slurping all SBuild errors, but logging them. */
+      def resolveViaSBuild(dep: String): Either[String, Seq[IClasspathEntry]] =
+        resolver.resolve(buildfile, dep).asScala match {
+          case Left(e) =>
+            warn(s"${projectName}: Could not resolve dependency: ${dep}", e)
+            Left(s"""Could not resolve dependency "${dep}" of project: ${projectName}. """ + e.getLocalizedMessage())
+          case Right(filesArray) =>
+            val files = filesArray.toSeq
+            debug(s"""${projectName}: Resolved dependency "${dep}" to "${files.mkString(", ")}"""")
+
+            var singleSource: Option[File] = None
+            var singleJavadoc: Option[File] = None
+
+            if (settings.resolveSources) {
+              if (files.size == 1) {
+                // resolve sources via "source" scheme handler
+                resolver.resolve(buildfile, "source:" + dep).asScala match {
+                  case Right(sources) =>
+                    if (sources.isEmpty) {
+                      debug(s"""${projectName}: Empty sources list for: ${dep}""")
+                    } else {
+                      if (sources.size > 1) debug(s"""${projectName}: Just using the first file of resolved sources for dep "${dep}" but multiple files were given: ${sources.mkString(", ")}""")
+                      debug(s"""${projectName}: Attaching sources for "${dep}": ${sources.head}""")
+                      singleSource = Some(sources.head)
+                    }
+                  case Left(e) =>
+                    debug(s"${projectName}: Could not resolve sources for: ${dep}", e)
+                }
+              } else debug(s"""${projectName}: Skip resolve of sources for "${dep}" as they does not resolved to exactly one file.""")
+            }
+
+            if (settings.resolveJavadoc) {
+              if (files.size == 1) {
+                // resolve javadoc via "javadoc" scheme handler
+                resolver.resolve(buildfile, "javadoc:" + dep).asScala match {
+                  case Right(javadoc) =>
+                    if (javadoc.isEmpty) {
+                      debug(s"""${projectName}: Empty javadoc list for: ${dep}""")
+                    } else {
+                      if (javadoc.size > 1) debug(s"""${projectName}: Just using the first file of resolved javadoc for dep "${dep}" but multiple files were given: ${javadoc.mkString(", ")}""")
+                      debug(s"""${projectName}: Attaching javadoc for "${dep}": ${javadoc.head}""")
+                      singleSource = Some(javadoc.head)
+                    }
+                  case Left(e) =>
+                    debug(s"""${projectName}: Could not resolve javadoc for: "${dep}"""", e)
+                }
+              } else debug(s"""${projectName}: Skip resolve of javadoc for "${dep}" as they does not resolved to exactly one file.""")
+            }
+
+            Right(files.map { file =>
+              // IDEA: refresh the resource
+              //            project.getProject().getWorkspace().getRoot().findFilesForLocationURI(file.toURI()).foreach {
+              //              iFile => iFile.refreshLocal(IResource.DEPTH_INFINITE, null)
+              //            }
+              val sourcePath = singleSource match {
+                case Some(file) => new Path(file.getAbsolutePath())
+                case _ => null
+              }
+              val javadocPath = singleJavadoc match {
+                case Some(file) => new Path(file.getAbsolutePath())
+                case _ => null
+              }
+
+              JavaCore.newLibraryEntry(new Path(file.getAbsolutePath()), sourcePath, javadocPath)
+            })
         }
+
+      var relatedWorkspaceProjectNames: Set[String] = Set()
+      var issues: Seq[ResolveIssue] = Seq()
+
+      // We will now check, if some of these targets can be resolved from workspace.
+      // - If so, we instead add an classpath entry with the existing and open workspace project
+      // - Else, we resolve the depenency and add the result to the classpath
+      val classpathEntries: Seq[IClasspathEntry] =
+        deps.flatMap { dep =>
+          aliases.getAliasForDependency(dep) match {
+            case None => resolveViaSBuild(dep) match {
+              case Right(cpe) => cpe
+              case Left(error) =>
+                issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
+                Seq()
+            }
+            case Some(alias) =>
+              relatedWorkspaceProjectNames += alias
+              javaModel.getJavaProject(alias) match {
+                case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
+                  debug(s"${projectName}: Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
+                  Seq(JavaCore.newProjectEntry(javaProject.getPath))
+                case _ => resolveViaSBuild(dep) match {
+                  case Right(cpe) => cpe
+                  case Left(error) =>
+                    issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
+                    Seq()
+                }
+              }
+          }
+        }
+
+      ClasspathInfo(
+        classpathEntries = classpathEntries.distinct,
+        relatedProjects = relatedWorkspaceProjectNames,
+        resolveIssues = issues,
+        includedFiles = includedFiles)
+    } finally {
+      resolver.releaseProject(buildfile)
+    }
   }
 
   def updateClasspath(monitor: IProgressMonitor): Unit = try {

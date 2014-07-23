@@ -33,11 +33,27 @@ public class Either<L, R> {
 		}
 	}
 
+	public Optional<L> leftOption() {
+		if (!isRight) {
+			return Optional.some(left);
+		} else {
+			return Optional.none();
+		}
+	}
+
 	public R right() {
 		if (isRight) {
 			return right;
 		} else {
 			throw new NullPointerException("Right value not defined.");
+		}
+	}
+
+	public Optional<R> rightOption() {
+		if (isRight) {
+			return Optional.some(right);
+		} else {
+			return Optional.none();
 		}
 	}
 
