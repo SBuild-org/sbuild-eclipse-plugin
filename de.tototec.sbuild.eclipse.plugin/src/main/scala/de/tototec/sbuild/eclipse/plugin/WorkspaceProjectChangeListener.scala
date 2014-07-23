@@ -65,9 +65,15 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       StatusManager.getManager().handle(e.getStatus())
   }
 
+  /**
+   * Get all projects that are associated to the given resources.
+   */
   def getProjects(resources: Array[IResource]): Array[IProject] =
     resources.map { r => getProject(r) }.collect { case Some(x) => x }.distinct
 
+  /**
+   * Get the project associated to the given resource.
+   */
   def getProject(resource: IResource): Option[IProject] = {
     resource.getType match {
       case IResource.PROJECT | IResource.FILE | IResource.FOLDER => Some(resource.getProject)
@@ -75,6 +81,9 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
     }
   }
 
+  /**
+   * Determine which SBuildClasspathContainer's are affected by a change in the given projects and/or resources.
+   */
   def affectedProjects(projects: Array[IProject], changedResources: Seq[IResource]): Array[SBuildClasspathContainer] = {
     if (projects.isEmpty && changedResources.isEmpty) Array()
     else {
@@ -92,7 +101,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       }
 
       if (!projectsToUpdate.isEmpty)
-        debug("Updating SBuild Libraries in projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
+        debug("Affected SBuild projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
 
       projectsToUpdate
     }

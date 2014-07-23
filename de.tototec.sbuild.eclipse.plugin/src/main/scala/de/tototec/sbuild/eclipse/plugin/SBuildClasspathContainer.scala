@@ -45,6 +45,9 @@ object SBuildClasspathContainer {
     }
   }
 
+  /**
+   * Get all SBuildClasspathContainer's that are associated to the given java projects.
+   */
   def getSBuildClasspathContainers(javaProjects: Array[IJavaProject]): Array[SBuildClasspathContainer] =
     javaProjects.flatMap { p => getSBuildClasspathContainers(p) }
 
