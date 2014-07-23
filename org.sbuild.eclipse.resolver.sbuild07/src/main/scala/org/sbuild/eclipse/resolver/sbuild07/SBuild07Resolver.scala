@@ -6,14 +6,13 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.net.URLClassLoader
 import java.util.Properties
-
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import scala.util.control.NonFatal
-
-import org.sbuild.eclipse.resolver.{Either => JEither}
 import org.sbuild.eclipse.resolver.SBuildResolver
+import org.sbuild.eclipse.resolver.{ Either => JEither }
+import org.sbuild.eclipse.resolver.Optional
 
 class SBuild07Resolver(sbuildHomeDir: File) extends SBuildResolver {
 
@@ -67,41 +66,84 @@ class SBuild07Resolver(sbuildHomeDir: File) extends SBuildResolver {
 
   import state._
 
-  case class Cached(timestamp: Long, ok: Boolean, projectFile: File, resolver: Any)
+  case class Cached(timestamp: Long, projectFile: File, resolver: Try[Any])
 
+  // TODO: limit cache size
   private[this] var cache: Map[File, Cached] = Map()
-  protected def resolverForProject(projectFile: File): Any = {
+
+  protected def resolverForProject(projectFile: File): Try[Any] = {
     cache.get(projectFile) match {
-      case Some(Cached(timestamp, ok, file, resolver)) if ok == true => resolver
-      case None =>
-        val newResolver = getEmbeddedResolverMethod.invoke(state.sbuildEmbedded, projectFile, new Properties())
-        cache += projectFile -> Cached(System.currentTimeMillis(), true, projectFile, newResolver)
-        newResolver
+      case Some(Cached(timestamp, file, resolver)) => resolver
+      case _ =>
+        Try(getEmbeddedResolverMethod.invoke(state.sbuildEmbedded, projectFile, new Properties())) recoverWith {
+          case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
+            Failure(e.getCause())
+        }
     }
   }
 
-  override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, Array[String]] =
+  def prepareProject(projectFile: File, keepFailed: Boolean): Optional[Throwable] = {
+    cache.get(projectFile) match {
+      case Some(_) => Optional.none()
+      case None =>
+        val resolver = resolverForProject(projectFile)
+        if (resolver.isSuccess || keepFailed)
+          debug(s"Caching resolver for: ${projectFile} -> ${resolver}")
+        synchronized {
+          cache += projectFile -> Cached(System.currentTimeMillis(), projectFile, resolver)
+        }
+        resolver match {
+          case Success(_) => Optional.none()
+          case Failure(e) => Optional.some(e)
+        }
+    }
+  }
+
+  def releaseProject(projectFile: File): Unit = {
+    cache.get(projectFile).foreach { _ =>
+      debug(s"Evict resolver for: ${projectFile}")
+      synchronized {
+        cache -= projectFile
+      }
+    }
+  }
+
+  private[this] def withResolver[T](projectFile: File)(f: Any => Either[Throwable, T]): JEither[Throwable, T] = resolverForProject(projectFile) match {
+    case Success(resolver) => f(resolver) match {
+      case Left(e) => JEither.left(e)
+      case Right(r) => JEither.right(r)
+    }
+    case Failure(e) => JEither.left(e)
+  }
+
+  override def exportedDependencies(projectFile: File, exportName: String): JEither[Throwable, Array[String]] = withResolver(projectFile) { resolver =>
     try {
-      JEither.right(
-        getExportedDependenciesMethod.invoke(resolverForProject(projectFile), exportName).
+      Right(
+        getExportedDependenciesMethod.invoke(resolver, exportName).
           asInstanceOf[Seq[String]].toArray)
     } catch {
       case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
-        debug(s"""Could not retrieve exported dependencies "${exportName}". Casue: ${e}""")
-        JEither.left(e.getCause())
-      case NonFatal(e) => JEither.left(e)
+        //        debug(s"""Could not retrieve exported dependencies "${exportName}". Casue: ${e}""")
+        Left(e.getCause())
+      case NonFatal(e) => Left(e)
     }
+  }
 
-  override def resolve(projectFile: File, dependency: String): JEither[Throwable, Array[File]] = try {
-    resolveMethod.
-      invoke(resolverForProject(projectFile), dependency, nullProgressMonitorClass.newInstance.asInstanceOf[Object]).
-      asInstanceOf[Try[Seq[File]]] match {
-        case Success(s) => JEither.right(s.toArray)
-        case Failure(e) => JEither.left(e)
-      }
-  } catch {
-    case NonFatal(e) =>
-      debug(s"""Could not resolve depenendce "${dependency}". Cause: ${e}""")
-      JEither.left(e)
+  override def resolve(projectFile: File, dependency: String): JEither[Throwable, Array[File]] = withResolver(projectFile) { resolver =>
+    try {
+      resolveMethod.
+        invoke(resolver, dependency, nullProgressMonitorClass.newInstance.asInstanceOf[Object]).
+        asInstanceOf[Try[Seq[File]]] match {
+          case Success(s) => Right(s.toArray)
+          case Failure(e) => Left(e)
+        }
+    } catch {
+      case e: InvocationTargetException if sbuildExceptionClass.isInstance(e.getCause()) =>
+        //        debug(s"Could not resolve dependency: ${dependency}", e)
+        Left(e.getCause())
+      case NonFatal(e) =>
+        //        debug(s"Could not resolve dependency: ${dependency}", e)
+        Left(e)
+    }
   }
 }

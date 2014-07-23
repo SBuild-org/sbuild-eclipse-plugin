@@ -18,7 +18,7 @@ class SBuild(implicit _project: Project) {
   val featureJar = s"target/${namespace}.feature_${version}.jar"
 
   val pluginModules = Modules("../org.sbuild.eclipse.resolver",
-    // "../org.sbuild.eclipse.resolver.sbuild07",
+    "../org.sbuild.eclipse.resolver.sbuild07",
     "../de.tototec.sbuild.eclipse.plugin"
   )
 

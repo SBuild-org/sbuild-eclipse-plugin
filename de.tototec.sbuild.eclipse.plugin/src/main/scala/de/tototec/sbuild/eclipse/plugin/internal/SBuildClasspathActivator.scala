@@ -60,8 +60,6 @@ class SBuildClasspathActivator extends BundleActivator {
 
     de.tototec.sbuild.eclipse.plugin.debug("Starting bundle: " + bundleContext.getBundle)
 
-    resolvers ++= Seq(new DummySBuildResolver(new File("/usr/share/sbuild")))
-
     val tracker = new ServiceTracker(bundleContext, classOf[SBuildResolver].getName, null) {
       override def addingService(reference: ServiceReference): AnyRef = {
         de.tototec.sbuild.eclipse.plugin.info("Registering detected SBuild Resover: " + reference)
@@ -110,6 +108,14 @@ class SBuildClasspathActivator extends BundleActivator {
     log.map(_.log(new Status(status, bundleContext.get.getBundle.getSymbolicName, msg, cause)))
   }
 
-  def sbuildResolvers: Seq[SBuildResolver] = resolvers
+  private[this] var scannedForExtensionBundles: Boolean = false
+
+  def sbuildResolvers: Seq[SBuildResolver] = {
+    if (!scannedForExtensionBundles) bundleContext foreach { ctx =>
+      scanAndStartExtensionBundles(ctx)
+      scannedForExtensionBundles = true
+    }
+    resolvers
+  }
 
 }

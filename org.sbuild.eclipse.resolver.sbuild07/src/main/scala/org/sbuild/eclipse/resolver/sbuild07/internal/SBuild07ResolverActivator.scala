@@ -14,6 +14,7 @@ class SBuild07ResolverActivator extends BundleActivator {
     val sbuildHomeDir = new File("/usr/share/sbuild")
     val resolver = new SBuild07Resolver(sbuildHomeDir)
     
+    // TODO: add extra info about resolver in properties
     context.registerService(classOf[SBuildResolver].getName, resolver, null)
   }
 
