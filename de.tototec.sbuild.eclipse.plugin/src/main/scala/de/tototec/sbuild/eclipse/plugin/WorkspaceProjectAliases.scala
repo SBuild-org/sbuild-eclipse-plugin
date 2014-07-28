@@ -4,23 +4,20 @@ import org.eclipse.core.resources.ProjectScope
 import org.eclipse.jdt.core.IJavaProject
 
 object WorkspaceProjectAliases {
-  def SBuildPreferencesNode = "de.tototec.sbuild.eclipse.plugin"
-  def WorkspaceProjectAliasNode = "workspaceProjectAlias"
-  def WorkspaceProjectRegexAliasNode = "workspaceProjectRegexAlias"
 
   def apply(project: IJavaProject): WorkspaceProjectAliases = {
     new WorkspaceProjectAliases(
-      read(project, WorkspaceProjectAliasNode),
-      read(project, WorkspaceProjectRegexAliasNode)
+      read(project, SBuildPreferences.Node.WorkspaceProjectAlias),
+      read(project, SBuildPreferences.Node.WorkspaceProjectRegexAlias)
     )
   }
 
   def read(project: IJavaProject, node: String): Map[String, String] = {
     val projectName = project.getProject.getName
     val projectScope = new ProjectScope(project.getProject)
-    projectScope.getNode(SBuildPreferencesNode) match {
+    projectScope.getNode(SBuildPreferences.Node.Main) match {
       case null =>
-        debug(s"${projectName}: Could not access prefs node: ${SBuildPreferencesNode}")
+        debug(s"${projectName}: Could not access prefs node: ${SBuildPreferences.Node.Main}")
         Map()
       case prefs =>
         prefs.node(node) match {
@@ -42,7 +39,7 @@ object WorkspaceProjectAliases {
 
   def write(project: IJavaProject, node: String, aliases: Map[String, String]) {
     val projectScope = new ProjectScope(project.getProject)
-    projectScope.getNode(SBuildPreferencesNode) match {
+    projectScope.getNode(SBuildPreferences.Node.Main) match {
       case null =>
       case prefs =>
         prefs.node(node) match {

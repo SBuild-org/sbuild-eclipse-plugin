@@ -18,6 +18,8 @@ import org.osgi.framework.ServiceReference
 import org.osgi.util.tracker.ServiceTracker
 import org.sbuild.eclipse.resolver.SBuildResolver
 
+import de.tototec.sbuild.eclipse.plugin.debug
+import de.tototec.sbuild.eclipse.plugin.info
 import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
 
 /**
@@ -56,11 +58,11 @@ class SBuildClasspathActivator extends BundleActivator {
     this._bundleContext = Some(bundleContext)
     onStop ::= { _ => _bundleContext = None }
 
-    de.tototec.sbuild.eclipse.plugin.debug("Starting bundle: " + bundleContext.getBundle)
+    debug("Starting bundle: " + bundleContext.getBundle)
 
     val tracker = new ServiceTracker(bundleContext, classOf[SBuildResolver].getName, null) {
       override def addingService(reference: ServiceReference): AnyRef = {
-        de.tototec.sbuild.eclipse.plugin.info("Registering detected SBuild Resover: " + reference)
+        info("Registering detected SBuild Resover: " + reference)
         val service = bundleContext.getService(reference).asInstanceOf[SBuildResolver]
         synchronized { resolvers ++= Seq(service) }
         service
