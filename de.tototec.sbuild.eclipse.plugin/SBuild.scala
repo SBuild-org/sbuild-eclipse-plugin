@@ -1,6 +1,6 @@
 import org.sbuild._
 
-@version("0.7.9013")
+@version("0.7.9010")
 @classpath("/home/lefou/work/tototec/sbuild/sbuild-scalac-plugin/org.sbuild.plugins.scalac/target/org.sbuild.plugins.scalac-0.0.9000.jar",
   "/home/lefou/work/tototec/sbuild/sbuild-bndjar-plugin/org.sbuild.plugins.bndjar/target/org.sbuild.plugins.bndjar-0.0.9000.jar",
   "http://sbuild.org/uploads/sbuild/0.7.9010.0-8-0-M1/org.sbuild.addons-0.7.9010.0-8-0-M1.jar")
