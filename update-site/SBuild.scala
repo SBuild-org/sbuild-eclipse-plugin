@@ -2,7 +2,7 @@ import org.sbuild._
 import org.sbuild.ant._
 import org.sbuild.ant.tasks._
 
-@version("0.7.9013")
+@version("0.7.9010")
 @include("FeatureBuilder.scala")
 @classpath("mvn:org.apache.ant:ant:1.8.4",
   "http://sbuild.org/uploads/sbuild/0.7.9010.0-8-0-M1/org.sbuild.ant-0.7.9010.0-8-0-M1.jar")
@@ -50,6 +50,8 @@ class SBuild(implicit _project: Project) {
   Target("phony:clean").evictCache exec {
     AntDelete(dir = Path("target"))
   }
+
+  Target("phony:deepClean") dependsOn "clean" ~ pluginModules.map(_.targetRef("clean"))
 
   Target(featureProperties) exec { ctx: TargetContext =>
     // Eclipse Update assume the first line as title, so remove trailing empty lines
