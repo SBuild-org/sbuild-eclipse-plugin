@@ -53,10 +53,10 @@ class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with I
     this.project = project
     debug("Read workspace project aliases into " + getClass())
     aliasModel =
-      WorkspaceProjectAliases.read(project, WorkspaceProjectAliases.WorkspaceProjectAliasNode).toSeq.map {
+      WorkspaceProjectAliases.read(project, SBuildPreferences.Node.WorkspaceProjectAlias).toSeq.map {
         case (key, value) => new AliasEntry(key, value, false)
       } ++
-        WorkspaceProjectAliases.read(project, WorkspaceProjectAliases.WorkspaceProjectRegexAliasNode).toSeq.map {
+        WorkspaceProjectAliases.read(project, SBuildPreferences.Node.WorkspaceProjectRegexAlias).toSeq.map {
           case (key, value) => new AliasEntry(key, value, true)
         }
   }
@@ -67,8 +67,8 @@ class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with I
   override def finish(): Boolean = {
     debug("Write workspace project aliases from " + getClass())
     val (regex, nonRegex) = aliasModel.partition(_.regex)
-    WorkspaceProjectAliases.write(project, WorkspaceProjectAliases.WorkspaceProjectRegexAliasNode, regex.map { case AliasEntry(key, value, true) => (key, value) }.toMap)
-    WorkspaceProjectAliases.write(project, WorkspaceProjectAliases.WorkspaceProjectAliasNode, nonRegex.map { case AliasEntry(key, value, false) => (key, value) }.toMap)
+    WorkspaceProjectAliases.write(project, SBuildPreferences.Node.WorkspaceProjectRegexAlias, regex.map { case AliasEntry(key, value, true) => (key, value) }.toMap)
+    WorkspaceProjectAliases.write(project, SBuildPreferences.Node.WorkspaceProjectAlias, nonRegex.map { case AliasEntry(key, value, false) => (key, value) }.toMap)
     // update the classpath container to reflect changes
     SBuildClasspathContainer.getSBuildClasspathContainers(project).map(c => c.updateClasspath(new NullProgressMonitor()))
     true

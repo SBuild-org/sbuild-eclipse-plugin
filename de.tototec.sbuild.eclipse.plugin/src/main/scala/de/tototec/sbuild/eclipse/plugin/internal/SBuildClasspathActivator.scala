@@ -1,10 +1,8 @@
 package de.tototec.sbuild.eclipse.plugin.internal
 
-import java.util.{List => JList}
-
+import java.util.{ List => JList }
 import scala.util.Failure
 import scala.util.Try
-
 import org.eclipse.core.resources.IResourceChangeEvent
 import org.eclipse.core.resources.IWorkspace
 import org.eclipse.core.resources.ResourcesPlugin
@@ -17,10 +15,10 @@ import org.osgi.framework.BundleContext
 import org.osgi.framework.ServiceReference
 import org.osgi.util.tracker.ServiceTracker
 import org.sbuild.eclipse.resolver.SBuildResolver
-
 import de.tototec.sbuild.eclipse.plugin.debug
 import de.tototec.sbuild.eclipse.plugin.info
 import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
+import org.eclipse.ui.plugin.AbstractUIPlugin
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].
@@ -39,7 +37,7 @@ object SBuildClasspathActivator {
 /**
  * Bundle activator class for the SBuild Eclipse Plugin.
  */
-class SBuildClasspathActivator extends BundleActivator {
+class SBuildClasspathActivator extends AbstractUIPlugin with BundleActivator {
 
   private[this] var _bundleContext: Option[BundleContext] = None
   def bundleContext = _bundleContext
@@ -52,6 +50,8 @@ class SBuildClasspathActivator extends BundleActivator {
    * Start of the bundle.
    */
   override def start(bundleContext: BundleContext) {
+    super.start(bundleContext)
+
     SBuildClasspathActivator.activator = this;
     onStop ::= { _ => SBuildClasspathActivator.activator = null }
 
@@ -85,7 +85,10 @@ class SBuildClasspathActivator extends BundleActivator {
   }
 
   /** Stop of the bundle. */
-  override def stop(bundleContext: BundleContext) = onStop.foreach { f => f(bundleContext) }
+  override def stop(bundleContext: BundleContext) = {
+    onStop.foreach { f => f(bundleContext) }
+    super.stop(bundleContext)
+  }
 
   def scanAndStartExtensionBundles(context: BundleContext): Unit = {
     val bundlesToStart = context.getBundles().filter { bundle =>

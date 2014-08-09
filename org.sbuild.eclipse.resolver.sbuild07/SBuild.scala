@@ -13,7 +13,19 @@ class SBuild(implicit _project: Project) {
 
   val compileCp = s"mvn:org.scala-lang:scala-library:${scalaVersion}" ~
     resolverModule.targetRef("jar-main") ~
-    "mvn:org.osgi:org.osgi.core:4.1.0"
+    "mvn:org.osgi:org.osgi.core:4.1.0" ~
+    "mvn:org.eclipse:swt:3.3.0-v3346" ~
+    "zip:file=swt-debug.jar;archive=http://archive.eclipse.org/eclipse/downloads/drops/R-3.3-200706251500/swt-3.3-gtk-linux-x86_64.zip" ~
+    "mvn:org.eclipse.core:resources:3.3.0-v20070604" ~
+    "mvn:org.eclipse.core:jobs:3.3.0-v20070423" ~
+    "mvn:org.eclipse.equinox:common:3.3.0-v20070426" ~
+    "mvn:org.eclipse.core:contenttype:3.2.100-v20070319" ~
+    "mvn:org.eclipse.core:commands:3.3.0-I20070605-0010" ~
+    "mvn:org.eclipse.equinox:registry:3.3.0-v20070522" ~
+    "mvn:org.eclipse.equinox:preferences:3.2.100-v20070522" ~
+    "mvn:org.eclipse.core:runtime:3.3.100-v20070530" ~
+    "mvn:org.eclipse:jface:3.3.0-I20070606-0010" ~
+    "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100"
 
   ExportDependencies("eclipse.classpath", compileCp)
 
@@ -32,7 +44,8 @@ class SBuild(implicit _project: Project) {
     classesDirs(scalac.get.targetDir).
     dependsOn(scalac.get.compileTargetName).
     props(Map(
-      "Bundle-SymbolicName" -> namespace,
+      "Bundle-SymbolicName" -> s"${namespace};singleton:=true",
+      "Bundle-ActivationPolicy" -> "lazy",
       "Bundle-Version" -> version,
       "Bundle-Activator" -> s"${namespace}.internal.SBuild07ResolverActivator",
       "Export-Package" -> s"""${namespace};version="${version}"""",
@@ -42,5 +55,7 @@ class SBuild(implicit _project: Project) {
                               *""",
       "DynamicImport-Package" -> """!scala.tools.*,
                                     scala.*;version="[2.10,2.10.49)"""",
-      "SBuild-Service" -> "org.sbuild.eclipse.resolver.SBuildResolver")))
+      "SBuild-Service" -> "org.sbuild.eclipse.resolver.SBuildResolver",
+      "Include-Resource" -> """src/main/resources""",
+      "-removeheaders" -> "Include-Resource")))
 }

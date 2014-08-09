@@ -33,4 +33,40 @@
          <description>Experimental! Enhance presentation of SBuild classpath elements with details provided by SBuild.</description> 
       </decorator>
    </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="de.tototec.sbuild.eclipse.plugin.preferences.PreferencesPage"
+            id="de.tototec.sbuild.eclipse.plugin.preferences"
+            name="SBuild">
+      </page>
+   </extension>
+<!--
+   <extension
+         id="sbuildProjectNature"
+         name="SBuild Project Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="de.tototec.sbuild.eclipse.plugin.nature.SBuildProjectNature">
+         </run>
+      </runtime>
+      <builder
+            id="de.tototec.sbuild.eclipse.plugin.sbuildProjectBuilder">
+      </builder>
+   </extension>
+   <extension
+         id="sbuildProjectBuilder"
+         name="SBuild Project Builder"
+         point="org.eclipse.core.resources.builders">
+      <builder
+            callOnEmptyDelta="false"
+            hasNature="true"
+            isConfigurable="true">
+         <run
+               class="de.tototec.sbuild.eclipse.plugin.builder.SBuildProjectBuilder">
+         </run>
+      </builder>
+   </extension>
+-->
 </plugin>

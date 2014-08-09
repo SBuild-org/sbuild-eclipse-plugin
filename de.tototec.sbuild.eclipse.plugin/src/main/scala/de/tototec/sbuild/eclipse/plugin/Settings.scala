@@ -24,9 +24,9 @@ object Settings {
   val ResolveJavadocDefault = false.toString
 }
 
-import de.tototec.sbuild.eclipse.plugin.Settings._
-
 class Settings() {
+  import Settings._
+  
   def this(containerPath: IPath) = {
     this
     fromPath(containerPath)

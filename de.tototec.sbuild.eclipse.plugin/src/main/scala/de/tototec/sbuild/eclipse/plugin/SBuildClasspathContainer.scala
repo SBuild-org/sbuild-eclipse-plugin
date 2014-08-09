@@ -284,9 +284,9 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             resolveIssues = Seq(ResolveIssue.ProjectIssue(error)),
             includedFiles = includedFiles)
       }
-      debug("Exported dependencies: " + deps.mkString(","))
+      debug(s"${projectName}: Exported dependencies: ${deps.mkString(",")}")
 
-      val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
+      lazy val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
 
       val aliases = WorkspaceProjectAliases(project)
       debug(s"${projectName}: Using workspaceProjectAliases: ${aliases}")
@@ -364,30 +364,29 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       // We will now check, if some of these targets can be resolved from workspace.
       // - If so, we instead add an classpath entry with the existing and open workspace project
       // - Else, we resolve the depenency and add the result to the classpath
-      val classpathEntries: Seq[IClasspathEntry] =
-        deps.flatMap { dep =>
-          aliases.getAliasForDependency(dep) match {
-            case None => resolveViaSBuild(dep) match {
-              case Right(cpe) => cpe
-              case Left(error) =>
-                issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
-                Seq()
-            }
-            case Some(alias) =>
-              relatedWorkspaceProjectNames += alias
-              javaModel.getJavaProject(alias) match {
-                case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
-                  debug(s"${projectName}: Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
-                  Seq(JavaCore.newProjectEntry(javaProject.getPath))
-                case _ => resolveViaSBuild(dep) match {
-                  case Right(cpe) => cpe
-                  case Left(error) =>
-                    issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
-                    Seq()
-                }
-              }
+      val classpathEntries: Seq[IClasspathEntry] = deps.flatMap { dep =>
+        aliases.getAliasForDependency(dep) match {
+          case None => resolveViaSBuild(dep) match {
+            case Right(cpe) => cpe
+            case Left(error) =>
+              issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
+              Seq()
           }
+          case Some(alias) =>
+            relatedWorkspaceProjectNames += alias
+            javaModel.getJavaProject(alias) match {
+              case javaProject if javaProject.exists && javaProject.getProject.isOpen =>
+                debug(s"${projectName}: Using Workspace Project '" + javaProject.getProject.getName + "' as alias for project: " + dep)
+                Seq(JavaCore.newProjectEntry(javaProject.getPath))
+              case _ => resolveViaSBuild(dep) match {
+                case Right(cpe) => cpe
+                case Left(error) =>
+                  issues ++= Seq(ResolveIssue.DependencyIssue(error, dep))
+                  Seq()
+              }
+            }
         }
+      }
 
       ClasspathInfo(
         classpathEntries = classpathEntries.distinct,
