@@ -10,6 +10,7 @@ import org.eclipse.ui.plugin.AbstractUIPlugin
 import org.eclipse.jface.util.IPropertyChangeListener
 import org.osgi.framework.ServiceRegistration
 import org.eclipse.jface.util.PropertyChangeEvent
+import org.sbuild.eclipse.resolver.sbuild07.preferences.Preferences
 
 object SBuild07ResolverActivator {
   private var _activator: Option[SBuild07ResolverActivator] = None
@@ -33,7 +34,6 @@ class SBuild07ResolverActivator extends AbstractUIPlugin with BundleActivator {
         ref foreach { _.unregister() }
         ref = if (sbuildHome != null && sbuildHome.trim().length() > 0) {
           val resolver = new SBuild07Resolver(new File(sbuildHome))
-          // TODO: Use the content of the SBUILD_HOME classpath variable as default for the preferences, if set
           // TODO: add extra info about resolver in properties
           Some(context.registerService(classOf[SBuildResolver].getName, resolver, null))
         } else None
@@ -43,7 +43,7 @@ class SBuild07ResolverActivator extends AbstractUIPlugin with BundleActivator {
     val propChangeListener = new IPropertyChangeListener {
       override def propertyChange(event: PropertyChangeEvent): Unit = {
         event.getProperty match {
-          case "SBUILD_PATH" => updateSBuildHome(event.getNewValue().asInstanceOf[String])
+          case Preferences.SBuildHome => updateSBuildHome(event.getNewValue().asInstanceOf[String])
           case _ =>
         }
       }
@@ -52,7 +52,7 @@ class SBuild07ResolverActivator extends AbstractUIPlugin with BundleActivator {
 
     onStop ::= { _ => getPreferenceStore().removePropertyChangeListener(propChangeListener) }
 
-    updateSBuildHome(getPreferenceStore().getString("SBUILD_PATH"))
+    updateSBuildHome(getPreferenceStore().getString(Preferences.SBuildHome))
 
   }
 

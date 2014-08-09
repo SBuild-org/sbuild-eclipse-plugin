@@ -25,6 +25,7 @@ class SBuild(implicit _project: Project) {
     "mvn:org.eclipse.equinox:preferences:3.2.100-v20070522" ~
     "mvn:org.eclipse.core:runtime:3.3.100-v20070530" ~
     "mvn:org.eclipse:jface:3.3.0-I20070606-0010" ~
+    "mvn:org.eclipse.jdt:core:3.3.0-v_771" ~
     "mvn:org.eclipse.ui:workbench:3.3.0-I20070608-1100"
 
   ExportDependencies("eclipse.classpath", compileCp)

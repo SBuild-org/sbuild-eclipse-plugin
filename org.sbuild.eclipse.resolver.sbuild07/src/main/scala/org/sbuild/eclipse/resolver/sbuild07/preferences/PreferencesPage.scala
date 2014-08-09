@@ -19,7 +19,7 @@ class PreferencesPage()
   }
 
   override protected def createFieldEditors(): Unit = {
-    addField(new DirectoryFieldEditor("SBUILD_PATH", "SBuild Path", getFieldEditorParent()))
+    addField(new DirectoryFieldEditor(Preferences.SBuildHome, "SBuild Path", getFieldEditorParent()))
   }
 
 }

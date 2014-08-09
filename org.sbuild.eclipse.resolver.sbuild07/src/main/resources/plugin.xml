@@ -10,4 +10,10 @@
             category="de.tototec.sbuild.eclipse.plugin.preferences">
       </page>
    </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="org.sbuild.eclipse.resolver.sbuild07.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
 </plugin>
