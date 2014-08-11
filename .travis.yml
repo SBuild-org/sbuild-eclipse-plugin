@@ -1,0 +1,17 @@
+language: java
+
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+  - openjdk7
+
+before_script: 
+  - "wget http://sbuild.org/uploads/sbuild/0.7.9010.0-8-0-M1/sbuild-0.7.9010.0-8-0-M1-dist.zip"
+  - "unzip sbuild-0.7.9010.0-8-0-M1-dist.zip"
+  - "chmod +x ./sbuild-0.7.9010.0-8-0-M1/bin/sbuild"
+  - "./sbuild-0.7.9010.0-8-0-M1/bin/sbuild --version"
+
+script: "./sbuild-0.7.9010.0-8-0-M1/bin/sbuild -f update-site/SBuild.scala --keep-going update-site"
+
+notifications:
+  irc: "irc.freenode.org#sbuild"

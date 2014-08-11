@@ -1,26 +1,18 @@
 package de.tototec.sbuild.eclipse.plugin
 
-import org.eclipse.core.resources.IResourceChangeListener
-import org.eclipse.core.resources.IResourceChangeEvent
-import org.eclipse.core.resources.IResource
 import org.eclipse.core.resources.IProject
+import org.eclipse.core.resources.IResource
+import org.eclipse.core.resources.IResourceChangeEvent
+import org.eclipse.core.resources.IResourceChangeListener
 import org.eclipse.core.resources.IResourceDelta
-import org.eclipse.core.resources.ResourcesPlugin
-import org.eclipse.jdt.core.JavaCore
-import org.eclipse.core.resources.IWorkspaceRunnable
-import org.eclipse.core.runtime.IProgressMonitor
-import org.eclipse.core.runtime.NullProgressMonitor
-import scala.parallel.Future
-import org.eclipse.core.runtime.jobs.Job
-import org.eclipse.core.runtime.Status
-import org.eclipse.core.runtime.IStatus
-import org.eclipse.core.runtime.CoreException
-import org.eclipse.ui.statushandlers.StatusManager
 import org.eclipse.core.resources.IResourceDeltaVisitor
-import org.eclipse.ui.internal.Workbench
-import org.eclipse.core.runtime.Platform
+import org.eclipse.core.resources.ResourcesPlugin
+import org.eclipse.core.runtime.CoreException
+import org.eclipse.core.runtime.IStatus
+import org.eclipse.jdt.core.JavaCore
+import org.eclipse.ui.statushandlers.StatusManager
 
-class WorkspaceProjectChangeListener extends IResourceChangeListener {
+class WorkspaceProjectChangeListener() extends IResourceChangeListener {
 
   override def resourceChanged(event: IResourceChangeEvent): Unit = try {
     event.getType match {
@@ -65,9 +57,15 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       StatusManager.getManager().handle(e.getStatus())
   }
 
+  /**
+   * Get all projects that are associated to the given resources.
+   */
   def getProjects(resources: Array[IResource]): Array[IProject] =
     resources.map { r => getProject(r) }.collect { case Some(x) => x }.distinct
 
+  /**
+   * Get the project associated to the given resource.
+   */
   def getProject(resource: IResource): Option[IProject] = {
     resource.getType match {
       case IResource.PROJECT | IResource.FILE | IResource.FOLDER => Some(resource.getProject)
@@ -75,14 +73,21 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
     }
   }
 
+  /**
+   * Determine which SBuildClasspathContainer's are affected by a change in the given projects and/or resources.
+   */
   def affectedProjects(projects: Array[IProject], changedResources: Seq[IResource]): Array[SBuildClasspathContainer] = {
     if (projects.isEmpty && changedResources.isEmpty) Array()
     else {
 
       val projectNames = projects.map { _.getName }
 
-      debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
-      debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
+      if (false /* no debug */ ) {
+        if (!projects.isEmpty)
+          debug("Changed projects: " + projects.map(p => p.getName + (if (p.isOpen) " opened" else " closed")).mkString(", "))
+        if (!changedResources.isEmpty)
+          debug("Changed resources: " + changedResources.map(r => r.getName).mkString(", "))
+      }
 
       val workspaceRoot = ResourcesPlugin.getWorkspace.getRoot
       val openJavaProjects = JavaCore.create(workspaceRoot).getJavaProjects.filter(_.getProject.isOpen)
@@ -92,7 +97,7 @@ class WorkspaceProjectChangeListener extends IResourceChangeListener {
       }
 
       if (!projectsToUpdate.isEmpty)
-        debug("Updating SBuild Libraries in projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
+        debug("Changes affect SBuild projects: " + projectsToUpdate.map { _.project.getProject().getName() }.toSeq)
 
       projectsToUpdate
     }

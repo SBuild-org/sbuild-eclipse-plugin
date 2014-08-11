@@ -25,7 +25,7 @@ class RefreshContainerJob(container: SBuildClasspathContainer, isUser: Boolean)
       Status.OK_STATUS
     } catch {
       case e: JavaModelException =>
-        error("Exception in refresh job.", e)
+        error(s"${container.projectName}: Exception in refresh job.", e)
         e.getStatus()
     }
   }
