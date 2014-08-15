@@ -51,7 +51,7 @@ class SBuild(implicit _project: Project) {
     AntDelete(dir = Path("target"))
   }
 
-  Target("phony:deepClean") dependsOn "clean" ~ pluginModules.map(_.targetRef("clean"))
+  Target("phony:deep-clean") dependsOn "clean" ~ pluginModules.map(_.targetRef("clean"))
 
   Target(featureProperties) exec { ctx: TargetContext =>
     // Eclipse Update assume the first line as title, so remove trailing empty lines
