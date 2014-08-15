@@ -82,6 +82,26 @@
             </not>
          </enablement>         
       </objectContribution>
+      <objectContribution
+            objectClass="org.eclipse.core.resources.IProject"
+            nameFilter="*"
+            adaptable="true"
+            id="de.tototec.sbuild.eclipse.plugin.objectContribution2">
+         <action
+               class="de.tototec.sbuild.eclipse.plugin.nature.RemoveSBuildNatureActionDelegate"
+               enablesFor="+"
+               id="de.tototec.sbuild.eclipse.plugin.nature.RemoveSBuildNatureActionDelegate"
+               label="Remove SBuild Nature"
+               menubarPath="org.eclipse.ui.projectConfigure/additions"
+               tooltip="Remove SBuild nature / SBuild classpath container from a project">
+         </action>
+         <enablement>
+            <test forcePluginActivation="true"
+                  property="org.eclipse.core.resources.projectNature"
+                  value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
+            </test>
+         </enablement>         
+      </objectContribution>
    </extension>
 <!--
    <extension

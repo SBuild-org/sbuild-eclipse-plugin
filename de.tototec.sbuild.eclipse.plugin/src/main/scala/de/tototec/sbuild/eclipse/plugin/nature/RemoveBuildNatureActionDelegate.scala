@@ -5,15 +5,15 @@ import org.eclipse.jface.action.IAction
 
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
 
-class AddSBuildNatureActionDelegate() extends BaseActionDelegate {
+class RemoveSBuildNatureActionDelegate() extends BaseActionDelegate {
 
   def isEnabled(project: IProject): Boolean =
-    project.isAccessible() && !project.hasNature(SBuildProjectNature.NatureId)
+    project.isAccessible() && project.hasNature(SBuildProjectNature.NatureId)
 
   override def run(action: IAction): Unit = {
     selectedProjects foreach { project =>
-      debug(s"${project.getName()}: About to run: Add SBuild Nature")
-      SBuildProjectNature.ensureSBuildProjectNature(project)
+      debug(s"${project.getName()}: About to run: Remove SBuild Nature")
+      SBuildProjectNature.removeSBuildProjectNature(project)
     }
   }
 
