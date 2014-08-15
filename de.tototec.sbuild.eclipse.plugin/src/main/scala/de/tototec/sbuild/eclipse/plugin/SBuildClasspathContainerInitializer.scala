@@ -12,7 +12,7 @@ import de.tototec.sbuild.eclipse.plugin.Logger.debug
 class SBuildClasspathContainerInitializer extends ClasspathContainerInitializer {
 
   override def initialize(containerPath: IPath, project: IJavaProject): Unit = {
-    debug(s"intialize(containerPath=${containerPath},project=${project.getProject.getName})")
+    debug(s"${project.getProject.getName()}: intialize(containerPath=${containerPath},project=${project.getProject.getName})")
     setClasspathContainer(containerPath, project)
   }
 

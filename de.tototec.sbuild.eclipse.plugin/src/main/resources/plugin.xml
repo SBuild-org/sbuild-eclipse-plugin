@@ -17,10 +17,12 @@
          	class="de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainerPage" />
    </extension>
    <!-- Unfinished: The preferences page -->
+<!--
    <extension
     point="org.eclipse.core.runtime.preferences">
       <scope name="project" class="org.eclipse.core.internal.resources.ProjectPreferences"/>
    </extension>
+-->
    <!-- A decorator for the Package Explorer to indicate problems -->
    <extension
        point="org.eclipse.ui.decorators">
@@ -41,9 +43,8 @@
             name="SBuild">
       </page>
    </extension>
-<!--
    <extension
-         id="sbuildProjectNature"
+         id="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE"
          name="SBuild Project Nature"
          point="org.eclipse.core.resources.natures">
       <runtime>
@@ -51,10 +52,38 @@
                class="de.tototec.sbuild.eclipse.plugin.nature.SBuildProjectNature">
          </run>
       </runtime>
+      <!--
       <builder
             id="de.tototec.sbuild.eclipse.plugin.sbuildProjectBuilder">
       </builder>
+      -->
    </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            objectClass="org.eclipse.core.resources.IProject"
+            nameFilter="*"
+            adaptable="true"
+            id="de.tototec.sbuild.eclipse.plugin.objectContribution1">
+         <action
+               class="de.tototec.sbuild.eclipse.plugin.nature.AddSBuildNatureActionDelegate"
+               enablesFor="+"
+               id="de.tototec.sbuild.eclipse.plugin.nature.AddSBuildNatureActionDelegate"
+               label="Add SBuild Nature"
+               menubarPath="org.eclipse.ui.projectConfigure/additions"
+               tooltip="Add SBuild nature / SBuild classpath container to a project">
+         </action>
+         <enablement>
+            <not>
+               <test forcePluginActivation="true"
+                     property="org.eclipse.core.resources.projectNature"
+                     value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
+               </test>
+            </not>
+         </enablement>         
+      </objectContribution>
+   </extension>
+<!--
    <extension
          id="sbuildProjectBuilder"
          name="SBuild Project Builder"
