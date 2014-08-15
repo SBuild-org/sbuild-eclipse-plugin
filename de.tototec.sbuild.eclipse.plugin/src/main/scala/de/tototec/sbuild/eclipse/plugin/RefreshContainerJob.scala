@@ -7,6 +7,7 @@ import org.eclipse.core.runtime.IProgressMonitor
 import org.eclipse.core.runtime.Status
 import org.eclipse.jdt.core.JavaModelException
 import org.eclipse.core.runtime.NullProgressMonitor
+import de.tototec.sbuild.eclipse.plugin.Logger._
 
 //object RefreshContainerRule extends ISchedulingRule {
 //  private[this] def sameRule(rule: ISchedulingRule) =

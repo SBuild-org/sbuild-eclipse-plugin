@@ -2,6 +2,7 @@ package de.tototec.sbuild.eclipse.plugin
 
 import org.eclipse.core.runtime.NullProgressMonitor
 import org.eclipse.core.runtime.IProgressMonitor
+import de.tototec.sbuild.eclipse.plugin.Logger._
 
 trait DebugProgressMonitor extends IProgressMonitor {
 

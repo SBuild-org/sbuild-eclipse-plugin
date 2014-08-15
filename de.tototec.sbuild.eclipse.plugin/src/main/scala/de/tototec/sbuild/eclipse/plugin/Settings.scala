@@ -1,9 +1,11 @@
 package de.tototec.sbuild.eclipse.plugin
 
 import org.eclipse.core.runtime.IPath
-import org.eclipse.jdt.core.JavaCore
-import org.eclipse.jdt.core.IClasspathEntry
 import org.eclipse.core.runtime.Path
+import org.eclipse.jdt.core.IClasspathEntry
+import org.eclipse.jdt.core.JavaCore
+
+import de.tototec.sbuild.eclipse.plugin.Logger.debug
 
 object Settings {
   val SBuildFileKey = "sbuildFile"

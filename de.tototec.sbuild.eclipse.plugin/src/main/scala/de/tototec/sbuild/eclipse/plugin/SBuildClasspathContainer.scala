@@ -24,6 +24,7 @@ import org.eclipse.jdt.core.JavaCore
 import org.sbuild.eclipse.resolver.{ Either => JEither }
 
 import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
+import de.tototec.sbuild.eclipse.plugin.Logger._
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"

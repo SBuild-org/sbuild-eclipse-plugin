@@ -15,10 +15,9 @@ import org.osgi.framework.BundleContext
 import org.osgi.framework.ServiceReference
 import org.osgi.util.tracker.ServiceTracker
 import org.sbuild.eclipse.resolver.SBuildResolver
-import de.tototec.sbuild.eclipse.plugin.debug
-import de.tototec.sbuild.eclipse.plugin.info
 import de.tototec.sbuild.eclipse.plugin.WorkspaceProjectChangeListener
 import org.eclipse.ui.plugin.AbstractUIPlugin
+import de.tototec.sbuild.eclipse.plugin.Logger._
 
 /**
  * Companion object for bundle activator class [[SBuildClasspathActivator]].
@@ -68,7 +67,7 @@ class SBuildClasspathActivator extends AbstractUIPlugin with BundleActivator {
         service
       }
       override def removedService(reference: ServiceReference, service: AnyRef): Unit = {
-        de.tototec.sbuild.eclipse.plugin.info("Unregistering SBuild Resover: " + reference)
+        info("Unregistering SBuild Resover: " + reference)
         bundleContext.ungetService(reference)
         synchronized { resolvers = resolvers.filter(service.eq) }
       }
@@ -96,10 +95,10 @@ class SBuildClasspathActivator extends AbstractUIPlugin with BundleActivator {
         Option(bundle.getHeaders().get("SBuild-Service")).isDefined
     }
     bundlesToStart.foreach { bundle =>
-      de.tototec.sbuild.eclipse.plugin.debug("About to manually start bundle: " + bundle)
+      debug("About to manually start bundle: " + bundle)
       Try { bundle.start() } match {
         case Failure(e) =>
-          de.tototec.sbuild.eclipse.plugin.error("Couldn't start bundle: " + bundle)
+          error("Couldn't start bundle: " + bundle)
         case _ =>
       }
     }

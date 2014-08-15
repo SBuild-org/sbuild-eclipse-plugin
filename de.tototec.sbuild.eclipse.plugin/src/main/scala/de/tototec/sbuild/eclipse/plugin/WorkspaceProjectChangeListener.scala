@@ -8,9 +8,10 @@ import org.eclipse.core.resources.IResourceDelta
 import org.eclipse.core.resources.IResourceDeltaVisitor
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.CoreException
-import org.eclipse.core.runtime.IStatus
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.ui.statushandlers.StatusManager
+
+import de.tototec.sbuild.eclipse.plugin.Logger.debug
 
 class WorkspaceProjectChangeListener() extends IResourceChangeListener {
 

@@ -1,34 +1,30 @@
 package de.tototec.sbuild.eclipse.plugin
 
-import org.eclipse.jface.wizard.WizardPage
+import org.eclipse.core.runtime.NullProgressMonitor
+import org.eclipse.jdt.core.IClasspathEntry
+import org.eclipse.jdt.core.IJavaProject
 import org.eclipse.jdt.ui.wizards.IClasspathContainerPage
 import org.eclipse.jdt.ui.wizards.IClasspathContainerPageExtension
-import org.eclipse.jdt.core.IJavaProject
-import org.eclipse.jdt.core.IClasspathEntry
-import org.eclipse.swt.widgets.Composite
+import org.eclipse.jface.viewers.ArrayContentProvider
+import org.eclipse.jface.viewers.CellEditor
+import org.eclipse.jface.viewers.ColumnLabelProvider
+import org.eclipse.jface.viewers.ComboBoxViewerCellEditor
+import org.eclipse.jface.viewers.EditingSupport
+import org.eclipse.jface.viewers.ISelectionChangedListener
+import org.eclipse.jface.viewers.IStructuredSelection
+import org.eclipse.jface.viewers.SelectionChangedEvent
+import org.eclipse.jface.viewers.TableViewerColumn
+import org.eclipse.jface.viewers.TextCellEditor
+import org.eclipse.jface.wizard.WizardPage
 import org.eclipse.swt.SWT
-import org.eclipse.swt.layout.GridLayout
-import org.eclipse.swt.layout.GridData
-import org.eclipse.swt.widgets.Button
-import org.eclipse.swt.widgets.Label
+import org.eclipse.swt.events.ModifyEvent
+import org.eclipse.swt.events.ModifyListener
 import org.eclipse.swt.events.SelectionAdapter
 import org.eclipse.swt.events.SelectionEvent
-import org.eclipse.swt.widgets.Text
-import org.eclipse.swt.events.ModifyListener
-import org.eclipse.swt.events.ModifyEvent
-import org.eclipse.jface.viewers.TableViewerColumn
-import org.eclipse.jface.viewers.TableViewer
-import org.eclipse.jface.viewers.ColumnLabelProvider
-import org.eclipse.jface.viewers.ArrayContentProvider
-import org.eclipse.jface.viewers.IStructuredSelection
-import org.eclipse.jface.viewers.ISelectionChangedListener
-import org.eclipse.jface.viewers.SelectionChangedEvent
-import org.eclipse.jface.viewers.EditingSupport
-import org.eclipse.jface.viewers.TextCellEditor
-import org.eclipse.jface.viewers.CellEditor
-import org.eclipse.jface.viewers.ComboBoxViewerCellEditor
-import org.eclipse.jdt.internal.ui.packageview.ClassPathContainer
-import org.eclipse.core.runtime.NullProgressMonitor
+import org.eclipse.swt.layout.GridData
+import org.eclipse.swt.widgets.Composite
+
+import de.tototec.sbuild.eclipse.plugin.Logger.debug
 
 class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with IClasspathContainerPage with IClasspathContainerPageExtension {
 

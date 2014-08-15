@@ -1,8 +1,9 @@
-package de.tototec.sbuild.eclipse
+package de.tototec.sbuild.eclipse.plugin
 
-import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 import org.eclipse.core.runtime.IStatus
-package object plugin {
+import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
+
+object Logger {
 
   /** Print a debug message. */
   private[plugin] def debug(msg: => String, cause: Throwable = null) = {
