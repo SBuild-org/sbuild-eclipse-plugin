@@ -25,6 +25,7 @@ After that, you will find an update-site under `update-site/target/update-site`.
 
 * Extracted SBuild Resolver into separate Plugin, so that different SBuild resolvers can be used simultaneosly. For now, there are two resolver, one for the next upcomming SBuild version 0.8 (based on Scala 2.11) and one for older SBuild up until version 0.7.x (based on Scala 2.10).
 * Support for SBuild 0.8.x
+* Improved configuration. Now a new "SBuild" entry in the Eclipse settings holds all settings. The Eclipse classpath variable "SBUILD_HOME" is no longer required and used.
 * Migrated to Scala 2.11
 * Added new SBuild Nature plus a menu to simply be added the SBuild nature to any project.
 
