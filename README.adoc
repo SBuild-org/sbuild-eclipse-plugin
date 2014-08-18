@@ -30,6 +30,8 @@ After that, you will find an update-site under `update-site/target/update-site`.
   The Eclipse classpath variable "SBUILD_HOME" is no longer required nor used.
 * Migrated to Scala 2.11
 * Added new SBuild Nature plus a menu entry to simply add the SBuild nature to any project.
+* Various refactorings.
+* Added "Refresh SBuild Dependencies" menu entry.
 
 === SBuild Eclipse Plugin 0.1.0 - 0.4.3
 

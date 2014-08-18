@@ -10,8 +10,9 @@ import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.CoreException
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.ui.statushandlers.StatusManager
-
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
+import de.tototec.sbuild.eclipse.plugin.container.SBuildClasspathContainer
+import de.tototec.sbuild.eclipse.plugin.container.RefreshContainerJob
 
 class WorkspaceProjectChangeListener() extends IResourceChangeListener {
 
@@ -42,10 +43,10 @@ class WorkspaceProjectChangeListener() extends IResourceChangeListener {
             val openedProjs = getProjects(projDelta.getAffectedChildren(interestingFlags).
               collect { case d if (d.getFlags() & IResourceDelta.OPEN) != 0 => d.getResource() })
 
-            val projectsToUpdate =
+            val containersToUpdate =
               //              projectWithChangedSBuildFiles ++ 
-              affectedProjects(openedProjs, changedResources)
-            projectsToUpdate.distinct.foreach { c =>
+              affectedSBuildContainers(openedProjs, changedResources)
+            containersToUpdate.distinct.foreach { c =>
               val job = new RefreshContainerJob(container = c, isUser = false)
               job.schedule()
             }
@@ -77,7 +78,7 @@ class WorkspaceProjectChangeListener() extends IResourceChangeListener {
   /**
    * Determine which SBuildClasspathContainer's are affected by a change in the given projects and/or resources.
    */
-  def affectedProjects(projects: Array[IProject], changedResources: Seq[IResource]): Array[SBuildClasspathContainer] = {
+  def affectedSBuildContainers(projects: Array[IProject], changedResources: Seq[IResource]): Array[SBuildClasspathContainer] = {
     if (projects.isEmpty && changedResources.isEmpty) Array()
     else {
 

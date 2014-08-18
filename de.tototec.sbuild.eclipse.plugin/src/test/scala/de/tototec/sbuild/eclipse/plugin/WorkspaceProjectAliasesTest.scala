@@ -1,6 +1,7 @@
 package de.tototec.sbuild.eclipse.plugin
 
 import org.scalatest.FunSuite
+import de.tototec.sbuild.eclipse.plugin.preferences.WorkspaceProjectAliases
 
 class WorkspaceProjectAliasesTest extends FunSuite {
 

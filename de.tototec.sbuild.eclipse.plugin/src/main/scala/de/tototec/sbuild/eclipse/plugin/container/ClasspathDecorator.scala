@@ -1,4 +1,4 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.container
 
 import org.eclipse.jface.viewers.ILabelDecorator
 import org.eclipse.jface.viewers.ILabelProviderListener

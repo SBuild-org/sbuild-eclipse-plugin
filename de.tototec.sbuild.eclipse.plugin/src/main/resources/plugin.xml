@@ -6,7 +6,7 @@
        point="org.eclipse.jdt.core.classpathContainerInitializer">
       <classpathContainerInitializer
           id="de.tototec.sbuild.SBUILD_DEPENDENCIES"
-          class="de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainerInitializer"/>
+          class="de.tototec.sbuild.eclipse.plugin.container.SBuildClasspathContainerInitializer"/>
    </extension>
    <!-- The configuration page of the SBUILD LIBRARIES classpath container -->
    <extension 
@@ -14,24 +14,17 @@
       <classpathContainerPage
          	id="de.tototec.sbuild.SBUILD_DEPENDENCIES"
          	name="SBuild Libraries"
-         	class="de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainerPage" />
+         	class="de.tototec.sbuild.eclipse.plugin.container.SBuildClasspathContainerPage" />
    </extension>
-   <!-- Unfinished: The preferences page -->
-<!--
-   <extension
-    point="org.eclipse.core.runtime.preferences">
-      <scope name="project" class="org.eclipse.core.internal.resources.ProjectPreferences"/>
-   </extension>
--->
    <!-- A decorator for the Package Explorer to indicate problems -->
    <extension
        point="org.eclipse.ui.decorators">
       <decorator
-          id="de.tototec.sbuild.eclipse.plugin.ClasspathDecorator"
+          id="de.tototec.sbuild.eclipse.plugin.container.ClasspathDecorator"
           label="SBuild Classpath Decorator"
           state="true"
           lightweight="true"
-          class="de.tototec.sbuild.eclipse.plugin.ClasspathDecorator">
+          class="de.tototec.sbuild.eclipse.plugin.container.ClasspathDecorator">
          <description>Experimental! Enhance presentation of SBuild classpath elements with details provided by SBuild.</description> 
       </decorator>
    </extension>
@@ -52,11 +45,6 @@
                class="de.tototec.sbuild.eclipse.plugin.nature.SBuildProjectNature">
          </run>
       </runtime>
-      <!--
-      <builder
-            id="de.tototec.sbuild.eclipse.plugin.sbuildProjectBuilder">
-      </builder>
-      -->
    </extension>
    <extension
          point="org.eclipse.ui.popupMenus">
@@ -65,6 +53,14 @@
             nameFilter="*"
             adaptable="true"
             id="de.tototec.sbuild.eclipse.plugin.objectContribution1">
+         <enablement>
+            <not>
+               <test forcePluginActivation="true"
+                     property="org.eclipse.core.resources.projectNature"
+                     value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
+               </test>
+            </not>
+         </enablement>
          <action
                class="de.tototec.sbuild.eclipse.plugin.nature.AddSBuildNatureActionDelegate"
                enablesFor="+"
@@ -73,20 +69,18 @@
                menubarPath="org.eclipse.ui.projectConfigure/additions"
                tooltip="Add SBuild nature / SBuild classpath container to a project">
          </action>
-         <enablement>
-            <not>
-               <test forcePluginActivation="true"
-                     property="org.eclipse.core.resources.projectNature"
-                     value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
-               </test>
-            </not>
-         </enablement>         
       </objectContribution>
       <objectContribution
             objectClass="org.eclipse.core.resources.IProject"
             nameFilter="*"
             adaptable="true"
             id="de.tototec.sbuild.eclipse.plugin.objectContribution2">
+         <enablement>
+            <test forcePluginActivation="true"
+                  property="org.eclipse.core.resources.projectNature"
+                  value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
+            </test>
+         </enablement>
          <action
                class="de.tototec.sbuild.eclipse.plugin.nature.RemoveSBuildNatureActionDelegate"
                enablesFor="+"
@@ -95,27 +89,12 @@
                menubarPath="org.eclipse.ui.projectConfigure/additions"
                tooltip="Remove SBuild nature / SBuild classpath container from a project">
          </action>
-         <enablement>
-            <test forcePluginActivation="true"
-                  property="org.eclipse.core.resources.projectNature"
-                  value="de.tototec.sbuild.eclipse.plugin.SBUILD_NATURE">
-            </test>
-         </enablement>         
+         <action
+               class="de.tototec.sbuild.eclipse.plugin.container.RefreshClasspathContainerActionDelegate"
+               enablesFor="+"
+               id="de.tototec.sbuild.eclipse.plugin.container.RefreshClasspathContainerActionDelegate"
+               label="Refresh SBuild Dependencies">
+         </action>
       </objectContribution>
    </extension>
-<!--
-   <extension
-         id="sbuildProjectBuilder"
-         name="SBuild Project Builder"
-         point="org.eclipse.core.resources.builders">
-      <builder
-            callOnEmptyDelta="false"
-            hasNature="true"
-            isConfigurable="true">
-         <run
-               class="de.tototec.sbuild.eclipse.plugin.builder.SBuildProjectBuilder">
-         </run>
-      </builder>
-   </extension>
--->
 </plugin>

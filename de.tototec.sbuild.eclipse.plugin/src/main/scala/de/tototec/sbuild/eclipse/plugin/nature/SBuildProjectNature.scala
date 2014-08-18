@@ -7,7 +7,7 @@ import org.eclipse.core.runtime.Path
 import org.eclipse.jdt.core.IJavaProject
 import org.eclipse.jdt.core.JavaCore
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
-import de.tototec.sbuild.eclipse.plugin.SBuildClasspathContainer
+import de.tototec.sbuild.eclipse.plugin.container.SBuildClasspathContainer
 import org.eclipse.core.internal.content.ContentType
 import org.eclipse.jdt.internal.core.ClasspathEntry
 import org.eclipse.jdt.core.IClasspathEntry

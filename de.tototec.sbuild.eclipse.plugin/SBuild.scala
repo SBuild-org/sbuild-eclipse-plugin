@@ -81,6 +81,7 @@ class SBuild(implicit _project: Project) {
       "Implementation-Version" -> "${Bundle-Version}",
       "Private-Package" -> s"""${namespace},
                                ${namespace}.builder,
+                               ${namespace}.container,
                                ${namespace}.nature,
                                ${namespace}.preferences,
                                ${namespace}.internal""",

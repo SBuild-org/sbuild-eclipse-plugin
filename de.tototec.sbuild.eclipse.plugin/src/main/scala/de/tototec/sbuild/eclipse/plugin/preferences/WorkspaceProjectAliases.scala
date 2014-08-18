@@ -1,8 +1,7 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.preferences
 
 import org.eclipse.core.resources.ProjectScope
 import org.eclipse.jdt.core.IJavaProject
-
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
 
 object WorkspaceProjectAliases {

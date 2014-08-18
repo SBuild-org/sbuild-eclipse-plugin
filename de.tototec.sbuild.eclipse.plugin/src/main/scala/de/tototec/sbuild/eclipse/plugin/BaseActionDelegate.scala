@@ -1,4 +1,4 @@
-package de.tototec.sbuild.eclipse.plugin.nature
+package de.tototec.sbuild.eclipse.plugin
 
 import org.eclipse.core.resources.IProject
 import org.eclipse.core.resources.IResource
@@ -20,7 +20,7 @@ class BaseActionDelegate() extends ActionDelegate {
   protected def selectedProjects: List[IProject] = selection.toList flatMap selectionToProjects
 
   /** All affected projects of this selection. */
-  private[this] def selectionToProjects(selection: ISelection): List[IProject] = {
+  def selectionToProjects(selection: ISelection): List[IProject] = {
     // we need to update the selected projects
     selection match {
       case structuredSelection: IStructuredSelection =>

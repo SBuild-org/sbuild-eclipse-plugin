@@ -1,11 +1,9 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.container
 
 import java.io.File
 import java.net.URI
-
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
 import org.eclipse.core.resources.IResource
@@ -22,9 +20,12 @@ import org.eclipse.jdt.core.IJavaModelMarker
 import org.eclipse.jdt.core.IJavaProject
 import org.eclipse.jdt.core.JavaCore
 import org.sbuild.eclipse.resolver.{ Either => JEither }
-
 import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 import de.tototec.sbuild.eclipse.plugin.Logger._
+import de.tototec.sbuild.eclipse.plugin.Settings
+import de.tototec.sbuild.eclipse.plugin.SimpleJob
+import de.tototec.sbuild.eclipse.plugin.ScalacOutputParser
+import de.tototec.sbuild.eclipse.plugin.preferences.WorkspaceProjectAliases
 
 object SBuildClasspathContainer {
   val ContainerName = "de.tototec.sbuild.SBUILD_DEPENDENCIES"

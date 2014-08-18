@@ -1,4 +1,4 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.container
 
 import org.eclipse.core.runtime.IPath
 import org.eclipse.core.runtime.NullProgressMonitor

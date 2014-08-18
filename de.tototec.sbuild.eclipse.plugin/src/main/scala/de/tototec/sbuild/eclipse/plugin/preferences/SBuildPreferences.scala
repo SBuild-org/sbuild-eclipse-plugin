@@ -1,4 +1,4 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.preferences
 
 object SBuildPreferences {
 

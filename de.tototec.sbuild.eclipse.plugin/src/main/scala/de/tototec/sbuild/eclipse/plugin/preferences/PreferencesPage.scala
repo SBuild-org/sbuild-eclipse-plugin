@@ -1,10 +1,9 @@
 package de.tototec.sbuild.eclipse.plugin.preferences
 
-import org.eclipse.ui.IWorkbenchPreferencePage
-import org.eclipse.ui.IWorkbench
 import org.eclipse.jface.preference.FieldEditorPreferencePage
-import org.eclipse.jface.preference.DirectoryFieldEditor
-import org.eclipse.core.runtime.Platform
+import org.eclipse.ui.IWorkbench
+import org.eclipse.ui.IWorkbenchPreferencePage
+
 import de.tototec.sbuild.eclipse.plugin.internal.SBuildClasspathActivator
 
 class PreferencesPage()

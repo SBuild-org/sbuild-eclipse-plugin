@@ -6,6 +6,7 @@ import org.eclipse.jdt.core.IClasspathEntry
 import org.eclipse.jdt.core.JavaCore
 
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
+import de.tototec.sbuild.eclipse.plugin.container.SBuildClasspathContainer
 
 object Settings {
   val SBuildFileKey = "sbuildFile"

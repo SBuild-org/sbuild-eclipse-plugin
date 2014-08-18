@@ -1,4 +1,4 @@
-package de.tototec.sbuild.eclipse.plugin
+package de.tototec.sbuild.eclipse.plugin.container
 
 import org.eclipse.core.runtime.NullProgressMonitor
 import org.eclipse.jdt.core.IClasspathEntry
@@ -23,8 +23,12 @@ import org.eclipse.swt.events.SelectionAdapter
 import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.layout.GridData
 import org.eclipse.swt.widgets.Composite
-
 import de.tototec.sbuild.eclipse.plugin.Logger.debug
+import de.tototec.sbuild.eclipse.plugin.Settings
+import de.tototec.sbuild.eclipse.plugin.preferences.SBuildPreferences
+import de.tototec.sbuild.eclipse.plugin.preferences.WorkspaceProjectAliases
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationEvent
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationStrategy
 
 class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with IClasspathContainerPage with IClasspathContainerPageExtension {
 
@@ -113,6 +117,18 @@ class SBuildClasspathContainerPage extends WizardPage("SBuild Libraries") with I
     })
 
     val workspaceProjectAliases = composite.workspaceProjectAliasTable
+
+    //    new ColumnViewerEditorActivationStrategy(workspaceProjectAliases) {
+    //      override protected def isEditorActivationEvent(ev: ColumnViewerEditorActivationEvent): Boolean =
+    //        ev.eventType match {
+    //          case ColumnViewerEditorActivationEvent.TRAVERSAL |
+    //            ColumnViewerEditorActivationEvent.MOUSE_CLICK_SELECTION |
+    //            ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION |
+    //            ColumnViewerEditorActivationEvent.PROGRAMMATIC => true
+    //          case ColumnViewerEditorActivationEvent.KEY_PRESSED => ev.keyCode == SWT.CR
+    //          case _ => false
+    //        }
+    //    }
 
     val col1 = new TableViewerColumn(workspaceProjectAliases, SWT.LEFT)
     col1.getColumn.setText("Dependency")
