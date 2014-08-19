@@ -120,9 +120,11 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
             marker => if (marker.getAttribute(sbuildProjectMarkerAttribute) != null) marker.delete()
           }
 
+          sbuildFile.refreshLocal(IResource.DEPTH_ZERO, null)
+
           // set marker if project file is missing
           if (!sbuildFile.exists()) {
-            error(s"${projectName}: The buildfile ${settings.sbuildFile} does not exist.")
+            error(s"${projectName}: The buildfile ${settings.sbuildFile} does not exist: ${sbuildFile}")
             val marker = projResource.createMarker(IJavaModelMarker.BUILDPATH_PROBLEM_MARKER)
             marker.setAttributes(Map(
               IMarker.SEVERITY -> IMarker.SEVERITY_ERROR,
@@ -245,7 +247,7 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
     //    }
     //    val sbuildHomeDir = sbuildHomePath.toFile
 
-    info(s"${projectName}: Loading project...")
+    info(s"${projectName}: Loading buildfile: ${buildfile}")
     val resolvers = SBuildClasspathActivator.activator.sbuildResolvers.toStream.
       map(r => r -> r.prepareProject(buildfile, /* keepFailed */ false))
     val resolver = resolvers.find { case (resolver, errorOption) => errorOption.isEmpty() } match {
@@ -289,6 +291,14 @@ class SBuildClasspathContainer(path: IPath, val project: IJavaProject) extends I
       debug(s"${projectName}: Exported dependencies: ${deps.mkString(",")}")
 
       lazy val javaModel: IJavaModel = JavaCore.create(project.getProject.getWorkspace.getRoot)
+
+      // TODO: considder refreshing the settings of this project before accessing the workspace aliasses
+      // TODO: or we need a change listener for these settings ??
+      //      { // Workaround!
+      // see: https://github.com/SBuild-org/sbuild-eclipse-plugin/issues/2
+      //        debug(s"${projectName}: Forcing a refresh of the .settings folder for fresh workspace settings")
+      //        project.getProject().getFile(".settings").refreshLocal(IResource.DEPTH_INFINITE, null)
+      //      }
 
       val aliases = WorkspaceProjectAliases(project)
       debug(s"${projectName}: Using workspaceProjectAliases: ${aliases}")
